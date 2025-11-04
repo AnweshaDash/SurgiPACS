@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PACS Utai — Non-credit</title>
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  :root{
+    --brand:#2e7d32; --brand-25:#f5fbf6; --brand-50:#edf7ee; --brand-100:#e8f5e9;
+    --text:#0f1f17; --muted:#5b6a62; --stroke:#e6e8eb; --bg:#f6fbf7; --card:#ffffff;
+    --accent:#1976d2; --warn:#ef6c00; --danger:#c62828; --amber:#ffb300; --violet:#6a4bc3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  a{color:inherit; text-decoration:none}
+
+  .appbar{position:sticky; top:0; z-index:60; color:#fff;
+    background:linear-gradient(100deg,#1b5e20, #2e7d32 60%, #43a047)}
+  .appbar .row{display:flex; align-items:center; gap:12px; padding:12px 14px; white-space:nowrap; overflow:auto}
+  .logo{height:40px; width:40px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .logo img{width:100%; height:100%; object-fit:contain}
+  .ttl{font-weight:900; letter-spacing:.2px}
+  .meta{opacity:.9; font-size:12px}
+  .nav{display:flex; gap:8px; margin-left:auto}
+  .nav a{background:#ffffff1a; padding:6px 10px; border-radius:999px; border:1px solid #ffffff33; font-weight:800}
+  .nav a.active{background:#fff; color:#145a2a}
+  .icons{display:flex; gap:8px; margin-left:8px}
+  .iconbtn{position:relative; height:34px; width:34px; border-radius:10px; border:1px solid #ffffff33; background:#ffffff22; display:grid; place-items:center; cursor:pointer}
+  .badge{position:absolute; top:-6px; right:-6px; background:#ffeb3b; color:#145a2a; border-radius:999px; font-size:10px; padding:1px 5px; font-weight:800}
+
+  .tray{position:fixed; top:64px; right:16px; width:min(420px,95vw);
+    background:#fff; color:var(--text); border:1px solid var(--stroke);
+    border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.15); display:none; z-index:80}
+  .tray .hd{padding:10px 12px; border-bottom:1px solid var(--stroke); font-weight:800; color:#145a2a; display:flex; justify-content:space-between; align-items:center}
+  .tray .item{padding:10px 12px; border-bottom:1px dashed var(--stroke); display:flex; gap:8px; align-items:flex-start}
+  .tray .item:last-child{border-bottom:none}
+  .tray .tag{font-size:11px; background:var(--brand-100); color:#145a2a; padding:2px 8px; border-radius:999px; border:1px solid var(--stroke)}
+  .tray .close{margin-left:auto; cursor:pointer; color:#9aa8a1}
+
+  .wrap{padding:16px; max-width:1200px; margin:0 auto}
+  .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:14px}
+  @media (max-width:1100px){ .grid{grid-template-columns:repeat(8,1fr)} }
+  @media (max-width:780px){ .grid{grid-template-columns:repeat(1,1fr)} }
+  .span-12{grid-column:span 12} .span-8{grid-column:span 8} .span-6{grid-column:span 6} .span-4{grid-column:span 4}
+
+  .card{background:var(--card); border:1px solid var(--stroke); border-radius:16px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.05); display:flex; flex-direction:column}
+  .hd{padding:12px 14px; border-bottom:1px solid var(--stroke); color:#145a2a; font-weight:900; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--brand-50)}
+  .bd{padding:14px}
+  .chart-wrap{width:100%; height:300px; position:relative}
+  canvas{max-width:100% !important; max-height:100% !important}
+
+  .pills{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .pill{border:1px solid var(--stroke); border-radius:999px; background:#fff; color:#145a2a; padding:6px 10px; font-weight:800; cursor:pointer}
+  .pill.active{background:var(--brand-100)}
+  .tabs{display:flex; gap:6px; align-items:center}
+  .tab{border:1px solid var(--stroke); border-radius:999px; padding:6px 10px; background:#fff; color:#145a2a; font-weight:800; cursor:pointer}
+  .tab.active{background:var(--brand-100)}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .btn{border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer}
+  .btn-solid{background:var(--brand); color:#fff}
+  .btn-ghost{background:#fff; border:1px solid var(--stroke); color:#145a2a}
+  .btn-warn{background:var(--warn); color:#fff}
+  .pillnote{font-size:12px; color:#374151}
+
+  .strip{display:grid; grid-template-columns:repeat(6,1fr); gap:12px}
+  @media (max-width:1100px){ .strip{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:680px){ .strip{grid-template-columns:repeat(2,1fr)} }
+  .tile{perspective:1000px}
+  .flip{position:relative; height:110px; transform-style:preserve-3d; transition:transform .5s}
+  .tile:hover .flip{transform:rotateY(180deg)}
+  .face{position:absolute; inset:0; background:#fff; border:1px solid var(--stroke); border-radius:14px; padding:12px; display:flex; align-items:center; justify-content:space-between; backface-visibility:hidden}
+  .back{transform:rotateY(180deg); background:var(--brand-25)}
+  .kv{display:flex; flex-direction:column}
+  .kv .label{font-size:12px; color:#536267}
+  .kv .value{font-size:22px; font-weight:900; color:#145a2a}
+  .delta{font-size:12px; font-weight:900}
+  .delta.pos{color:#1b5e20} .delta.neg{color:#c62828}
+  .hint{font-size:12px; color:var(--muted)}
+
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th,td{border:1px solid var(--stroke); padding:8px 10px; text-align:center}
+  th{background:var(--brand-100); color:#145a2a}
+
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:90}
+  .panel{width:min(520px,96vw); background:#fff; border:1px solid var(--stroke); border-radius:14px; overflow:hidden}
+  .panel .hd{background:var(--brand-50)}
+  .panel .bd{padding:14px}
+  .panel textarea, .panel input{width:100%; min-height:96px; border:1px solid var(--stroke); border-radius:10px; padding:10px; font-family:inherit}
+  .panel .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:10px}
+
+  .toast{position:fixed; right:16px; bottom:16px; background:#145a2a; color:#fff; padding:10px 14px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.2); display:none; z-index:95}
+</style>
+</head>
+<body>
+
+<!-- App bar -->
+<div class="appbar">
+  <div class="row">
+    <a class="logo" href="index.html" aria-label="NABARD">
+      <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt="NABARD logo"/>
+    </a>
+    <div>
+      <div class="ttl">PACS Surgi – Executive Snapshot & Drill-downs</div>
+      <div class="meta">Durg, Chhattisgarh • Established 1957</div>
+    </div>
+    <nav class="nav">
+      <a href="index.html">🏠 Snapshot</a>
+      <a href="pacs.html">🏛️ PACS</a>
+      <a href="membership.html">👥 Membership</a>
+      <a href="loan.html">💳 Loan</a>
+      <a href="noncredit.html" class="active">🛒 Non-credit</a>
+      <a href="reporting.html">📤 Reporting</a>
+    </nav>
+    <div class="icons" style="position:relative">
+      <div class="iconbtn" id="bellBtn" title="Notifications" onclick="toggleTray()">
+        🔔 <span id="bellBadge" class="badge" style="display:none"></span>
+      </div>
+      <div class="iconbtn" title="Logout" onclick="logout()">⎋</div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification tray -->
+<div id="tray" class="tray" role="dialog" aria-live="polite">
+  <div class="hd">
+    <span>Notifications</span>
+    <button class="btn-ghost" onclick="clearNotifications()">Clear all</button>
+  </div>
+  <div id="trayItems"></div>
+  <div style="padding:10px 12px; font-size:12px; color:#5b6a62">Tip: tasks here are also visible in <b><a href="reporting.html">Reporting</a></b>.</div>
+</div>
+
+<div class="wrap">
+
+  <!-- Row 1: Top tiles -->
+  <div class="strip">
+    <div class="tile"><div class="flip">
+      <div class="face">
+        <div class="kv"><div class="label">Non-credit Revenue (FY24)</div><div class="value">₹1.91 Cr</div></div>
+        <div class="delta pos">+2% YoY</div>
+      </div>
+      <div class="face back">
+        <div class="kv"><div class="label">FY23</div><div class="value">₹1.88 Cr</div></div>
+        <div class="delta">Mix: Fertilisers 57% • Commission 14.6% • Others 28.4%</div>
+      </div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face">
+        <div class="kv"><div class="label">Non-credit Profit (FY24)</div><div class="value">₹35L</div></div>
+        <div class="delta pos">+39% YoY</div>
+      </div>
+      <div class="face back">
+        <div class="kv"><div class="label">FY23</div><div class="value">₹25L</div></div>
+        <div class="delta">Margin 13.42% → 18.25%</div>
+      </div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face">
+        <div class="kv"><div class="label">Activities Active</div><div class="value">4</div></div>
+      </div>
+      <div class="face back">
+        <div class="kv"><div class="label">Pipeline</div><div class="value">+1</div></div>
+        <div class="delta">Milk chiller</div>
+      </div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face">
+        <div class="kv"><div class="label">Diversification readiness Score</div><div class="value">68</div></div>
+        <div class="delta">Peer mean 73</div>
+      </div>
+      <div class="face back">
+        <div class="kv"><div class="label">Target</div><div class="value">75</div></div>
+        <div class="delta">Add 1–2 activities</div>
+      </div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face">
+        <div class="kv"><div class="label">Alerts</div><div class="value">2</div></div>
+        <div class="delta neg">DAP low cover</div>
+      </div>
+      <div class="face back">
+        <div class="kv"><div class="label">EOQ Policy</div><div class="value">45 days</div></div>
+        <div class="delta"><button class="btn-ghost" onclick="setAlerts()">Set alerts</button></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Row 2: Peer benchmarking (first) + Diversification -->
+  <div class="grid" style="margin-top:14px">
+    <div class="card span-6">
+      <div class="hd">Peer Benchmarking: Non-credit — Revenue Split (₹ L)</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="peerRevProf"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadCSV('peer_noncredit_rev_split.csv', buildPeerRows())">Download peer report</button>
+          <button class="btn" onclick="openModal('bs')">Request Balance Sheet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">Diversification readiness score — PACS vs Peers <span class="pillnote">Mean (73), Median (72) </span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="divScore"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadCSV('diversification_scores.csv', buildDivRows())">Export CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Agri-inputs mega tile -->
+  <div class="card span-12" style="margin-top:14px">
+    <div class="hd">
+      <div class="pills">
+        <span style="font-weight:800; color:#145a2a">Agri-Inputs — Sales & Inventory (MT)</span>
+        <button class="pill active" data-scope="aisku" data-type="fert">Fertilisers</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-target="ai" data-view="sales">Sales (6 months)</button>
+        <button class="tab" data-target="ai" data-view="stock">Stock vs Reorder + EOQ</button>
+        <button class="tab" data-target="ai" data-view="table">PO Table</button>
+      </div>
+    </div>
+    <div class="bd">
+      <div class="chart-wrap" id="ai_sales"><canvas id="aiSalesChart"></canvas></div>
+      <div class="chart-wrap" id="ai_stock" style="display:none"><canvas id="aiStockChart"></canvas></div>
+      <div id="ai_table" style="display:none">
+        <table id="poTbl">
+          <tr>
+            <th style="width:110px">Category</th>
+            <th style="width:110px">SKU</th>
+            <th>Stock</th>
+            <th>Reorder</th>
+            <th>EOQ</th>
+            <th>Days cover</th>
+            <th>Suggested PO</th>
+            <th>Select</th>
+          </tr>
+        </table>
+        <div class="toolbar">
+          <button class="btn btn-solid" onclick="raisePOSelected()">Create PO for selected</button>
+          <button class="btn btn-ghost" onclick="exportPOCSV()">Export CSV</button>
+          <button class="btn btn-warn" onclick="setAlerts()">Set alerts (&lt;30 days)</button>
+        </div>
+        <div class="hint">EOQ here is illustrative: √(2×Demand×OrderCost / HoldingCost). We calibrate to a 45-day policy.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modals -->
+<div id="modal" class="modal" onclick="if(event.target===this) this.style.display='none'">
+  <div class="panel">
+    <div class="hd"><span id="modalTitle">Action</span></div>
+    <div class="bd">
+      <label class="hint">Enter details (what/why/when). Saved to Notifications and shows up in <b>Reporting</b>.</label>
+      <textarea id="modalInput" placeholder="e.g., Request DPR for LPG distributorship; CAPEX ₹12L; target approval by Sep."></textarea>
+      <div class="actions">
+        <button class="btn-ghost" onclick="document.getElementById('modal').style.display='none'">Cancel</button>
+        <button class="btn" onclick="submitModal()">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ---------- Helpers & localStorage ---------- */
+function logout(){ localStorage.removeItem('pacs_auth'); window.location.href = './index.html'; }
+function getLS(k,def){ try{return JSON.parse(localStorage.getItem(k)) ?? def;}catch(e){return def;} }
+function setLS(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+function addNotification({title, detail, tag='Non-credit'}){
+  const items = getLS('pacs_notifications', []);
+  items.unshift({id:Date.now(), title, detail, tag, ts:new Date().toISOString()});
+  setLS('pacs_notifications', items); renderTray(); toast('✔ ' + title);
+}
+function addTask(title, detail, tag='Non-credit'){
+  const tasks = getLS('pacs_tasks', []); tasks.unshift({id:Date.now(), title, detail, tag, status:'Open', ts:new Date().toISOString()});
+  setLS('pacs_tasks', tasks); addNotification({title:`Task raised — ${title}`, detail, tag});
+}
+function renderTray(){
+  const items = getLS('pacs_notifications', []);
+  const box = document.getElementById('trayItems'); box.innerHTML = '';
+  const badge = document.getElementById('bellBadge'); badge.style.display = items.length ? 'inline-block' : 'none'; badge.textContent = items.length;
+  if(!items.length){ box.innerHTML = '<div class="item"><span class="tag">Info</span><div>No notifications.</div></div>'; return; }
+  items.forEach(it=>{
+    const div = document.createElement('div'); div.className='item';
+    div.innerHTML = `<span class="tag">${it.tag}</span>
+      <div><b>${it.title}</b><div class="hint">${it.detail}</div></div>
+      <span class="close" title="Dismiss" onclick="dismissNotif(${it.id})">✕</span>`;
+    box.appendChild(div);
+  });
+}
+function dismissNotif(id){ const items = getLS('pacs_notifications', []).filter(x=>x.id!==id); setLS('pacs_notifications', items); renderTray(); }
+function clearNotifications(){ setLS('pacs_notifications', []); renderTray(); }
+function toggleTray(){ const t = document.getElementById('tray'); t.style.display = (t.style.display==='block'?'none':'block'); }
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.style.display='block'; setTimeout(()=>t.style.display='none', 1600); }
+
+/* CSV helper */
+function downloadCSV(filename, rows){
+  const processRow = row => row.map(v=>`"${(v??'').toString().replace(/"/g,'""')}"`).join(',');
+  const csv = rows.map(processRow).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),800);
+}
+
+/* ---------- Data ---------- */
+const PACS = ['Utai','Dhaba','Surgi','Somni','Karanja'];
+const divScores = [68,72,70,75,80];
+const divMean = 73, divMedian = 72;
+function buildDivRows(){
+  return [
+    ['PACS','Score'],
+    ...PACS.map((p,i)=>[p, divScores[i]])
+  ];
+}
+
+
+/* Peer totals (for reference) */
+const peerRevenueL = [197,210,180,220,205];
+
+/* Stacked revenue split by category — each index sums to peerRevenueL[i] */
+const peerRevSplitL = {
+  fert:  [105,125,109,181,83],
+  seeds: [ 25, 9, 7, 9, 9],
+  pest:  [ 0, 0,  5, 0, 2]
+};
+function buildPeerRows(){
+  return [
+    ['PACS','Fertilisers (₹ L)','Seeds (₹ L)','Pesticides (₹ L)','Total (₹ L)'],
+    ...PACS.map((p,i)=>[
+      p,
+      peerRevSplitL.fert[i],
+      peerRevSplitL.seeds[i],
+      peerRevSplitL.pest[i],
+      peerRevSplitL.fert[i] + peerRevSplitL.seeds[i] + peerRevSplitL.pest[i]
+    ])
+  ];
+}
+
+/* Agri-inputs */
+const months6 = ['Jan','Feb','Mar','Apr','May','Jun'];
+const sales = {
+  fert: {
+    Urea:[15975.01,4500,2475,18675,259800,54300],
+    DAP: [365931,229836,44017.5,295005.5,745932,525271.5],
+    Sagrika: [666899.99,232200,76950,391500,1952100,82350],
+    Neem : [10800,15600,12000,44400,127200,76200],
+  },
+  seeds:{
+    Paddy:[90,110,140,220,160,120],
+    Wheat:[60,50,45,40,30,25],
+    Maize:[70,65,80,95,120,150]
+  },
+  pest:{
+    UreaBooster:[35,40,38,42,60,72],
+    Insecticide:[28,32,30,34,48,55],
+    Fungicide:[22,24,26,28,36,44]
+  }
+};
+const stockModel = {
+  fert: { labels:['Urea','DAP','Sagrika','Neem'], stock:[542,35,3,25], reorder:[0,265,297,275] },
+  seeds:{ labels:['Paddy','Wheat','Maize'],   stock:[260,140,180],      reorder:[220,120,160] },
+  pest:  { labels:['UreaBooster','Insecticide','Fungicide'], stock:[180,120,100], reorder:[160,140,110] }
+};
+const EOQParams = { fert:{order:20, hold:3}, seeds:{order:10, hold:4}, pest:{order:5, hold:5} };
+
+/* ---------- Charts ---------- */
+const ctx = id => document.getElementById(id)?.getContext('2d');
+Chart.defaults.font.family='Inter,Arial';
+Chart.defaults.plugins.tooltip.cornerRadius=8;
+
+const valueLabelPlugin = { id:'valabel',
+  afterDatasetsDraw(chart){
+    const {ctx} = chart; ctx.save();
+    chart.data.datasets.forEach((ds,dsi)=>{
+      const meta = chart.getDatasetMeta(dsi);
+      (meta?.data||[]).forEach((el,i)=>{
+        const v = ds.data[i];
+        if(v==null || isNaN(v)) return;
+        const {x,y} = el.tooltipPosition();
+        ctx.fillStyle = '#374151'; ctx.font='12px Inter,Arial'; ctx.textAlign='center';
+        ctx.fillText(String(v), x, y-6);
+      });
+    });
+    ctx.restore();
+  }
+};
+
+/* Diversification chart */
+new Chart(ctx('divScore'),{
+  type:'bar',
+  data:{labels:[...PACS,'Mean','Median'],
+    datasets:[{label:'Score', data:[...divScores,divMean,divMedian], backgroundColor:['#2e7d32','#43a047','#66bb6a','#81c784','#a5d6a7','#1976d2','#6a4bc3']}]},
+  options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:100}}},
+  plugins:[valueLabelPlugin]
+});
+
+/* Peer stacked revenue split */
+new Chart(ctx('peerRevProf'),{
+  type:'bar',
+  data:{
+    labels:PACS,
+    datasets:[
+      {label:'Fertilisers (₹ L)', data:peerRevSplitL.fert,  backgroundColor:'#2e7d32', stack:'rev'},
+      {label:'Seeds (₹ L)',       data:peerRevSplitL.seeds, backgroundColor:'#ffa000', stack:'rev'},
+      {label:'Pesticides (₹ L)',  data:peerRevSplitL.pest,  backgroundColor:'#1976d2', stack:'rev'}
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{position:'top'}},
+    scales:{
+      x:{stacked:true},
+      y:{stacked:true, beginAtZero:true}
+    }
+  }
+});
+
+/* -------- Agri-inputs mega tile logic -------- */
+let AI_CAT = 'fert';
+let AI_VIEW = 'sales';
+let aiSalesChart, aiStockChart;
+
+function bindAISwitchers(){
+  document.querySelectorAll('.pill[data-scope="aisku"]').forEach(btn=>{
+    btn.onclick = () => {
+      document.querySelectorAll('.pill[data-scope="aisku"]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      AI_CAT = btn.dataset.type; renderAI();
+    };
+  });
+  document.querySelectorAll('.tab[data-target="ai"]').forEach(btn=>{
+    btn.onclick = () =>{
+      btn.parentElement.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      AI_VIEW = btn.dataset.view; renderAI();
+    };
+  });
+}
+bindAISwitchers();
+
+function monthTotals(arr){ return arr.reduce((a,b)=>a+b,0); }
+function avgLast3(arr){ const n=arr.length; return (arr[n-1]+arr[n-2]+arr[n-3]) / 3; }
+function daysOfCover(stock, avgMonthly){ const daily = avgMonthly/30; return Math.max(0, Math.round((stock/daily))); }
+function eoqSimple(cat, annualDemand){ const {order, hold} = EOQParams[cat] || {order:1000, hold:5}; return Math.round(Math.sqrt( (2*annualDemand*order) / hold )); }
+
+function renderAI(){
+  document.getElementById('ai_sales').style.display = (AI_VIEW==='sales')?'block':'none';
+  document.getElementById('ai_stock').style.display = (AI_VIEW==='stock')?'block':'none';
+  document.getElementById('ai_table').style.display = (AI_VIEW==='table')?'block':'none';
+
+  const catSales = sales[AI_CAT];
+  const labels = Object.keys(catSales);
+
+  if(AI_VIEW==='sales'){
+    const ds = labels.map((sku,i)=>({label:sku, data:catSales[sku], backgroundColor:['#1976d2','#ffb300','#009688','#6a4bc3'][i%4]}));
+    if(aiSalesChart) aiSalesChart.destroy();
+    aiSalesChart = new Chart(ctx('aiSalesChart'),{
+      type:'bar', data:{labels:months6, datasets:ds},
+      options:{responsive:true, plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true}}},
+      plugins:[valueLabelPlugin]
+    });
+  }
+
+  if(AI_VIEW==='stock'){
+    const sm = stockModel[AI_CAT];
+    const annual = sm.labels.map((sku)=> monthTotals(catSales[sku]) * 2);
+    const eoq = annual.map(d=> eoqSimple(AI_CAT, d));
+    if(aiStockChart) aiStockChart.destroy();
+    aiStockChart = new Chart(ctx('aiStockChart'),{
+      type:'bar',
+      data:{labels:sm.labels,
+        datasets:[
+          {type:'bar',  label:'Stock on hand', data:sm.stock,  backgroundColor:'#2e7d32', order:3},
+          {type:'line', label:'Reorder level', data:sm.reorder, borderColor:'#c62828', borderDash:[6,6], pointRadius:0, tension:0, order:1},
+          {type:'line', label:'EOQ (units)', data:eoq, borderColor:'#1976d2', pointRadius:0, tension:0, order:2}
+        ]},
+      options:{responsive:true, plugins:{legend:{position:'top'}}, scales:{y:{beginAtZero:true}}},
+      plugins:[valueLabelPlugin]
+    });
+  }
+
+  if(AI_VIEW==='table'){ renderPOTable(); }
+}
+renderAI();
+
+/* Build PO table with cover & suggested order */
+function renderPOTable(){
+  const tbl = document.getElementById('poTbl');
+  [...tbl.querySelectorAll('tr')].slice(1).forEach(r=>r.remove());
+  const sm = stockModel[AI_CAT];
+  const catSales = sales[AI_CAT];
+  const targetDays = 45;
+
+  sm.labels.forEach((sku,i)=>{
+    const stock = sm.stock[i];
+    const reorder = sm.reorder[i];
+    const avgM = avgLast3(catSales[sku]);
+    const cover = daysOfCover(stock, avgM);
+    const annual = monthTotals(catSales[sku]) * 2;
+    const eoq = eoqSimple(AI_CAT, annual);
+    const daily = avgM/30;
+    const targetStock = Math.round(targetDays * daily);
+    let need = Math.max(0, targetStock - stock);
+    if(stock < reorder) need = Math.max(need, eoq);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${AI_CAT.toUpperCase()}</td>
+      <td>${sku}</td>
+      <td>${stock}</td>
+      <td>${reorder}</td>
+      <td>${eoq}</td>
+      <td ${cover<30?'style="color:#c62828;font-weight:700"':''}>${cover} d</td>
+      <td ${need>0?'style="color:#ef6c00;font-weight:700"':''}>${need}</td>
+      <td><input type="checkbox" data-cat="${AI_CAT}" data-sku="${sku}" data-qty="${need}"></td>`;
+    tbl.appendChild(tr);
+  });
+}
+
+function exportPOCSV(){
+  const rows=[['Category','SKU','Stock','Reorder','EOQ','Days cover','Suggested PO']];
+  const t=document.getElementById('poTbl');
+  [...t.querySelectorAll('tr')].slice(1).forEach(r=>{
+    const c=[...r.querySelectorAll('td')].map(td=>td.innerText);
+    rows.push(c.slice(0,7));
+  });
+  downloadCSV('agri_inputs_po.csv', rows);
+}
+
+function raisePOSelected(){
+  const checks = [...document.querySelectorAll('#poTbl input[type="checkbox"]:checked')];
+  if(checks.length===0){ toast('Select at least one SKU.'); return; }
+  const items = checks.map(c=>`${c.dataset.cat.toUpperCase()} — ${c.dataset.sku}: ${Number(c.dataset.qty)||0}`).join('\n • ');
+  addNotification({title:'PO draft created', detail:`\n • ${items}\n(See Reporting for follow-up)`, tag:'Agri-inputs'});
+}
+function setAlerts(){ addNotification({title:'Alerts set for low cover', detail:'Notify when days of cover < 30 across Inputs.', tag:'Agri-inputs'}); }
+
+/* Modal */
+let MODAL_KIND = 'task';
+function openModal(kind){
+  MODAL_KIND = kind;
+  const titleMap={dpr:'Request DPR', bs:'Request Balance Sheet', pacs:'Get PACS Contact', task:'Raise Task'};
+  document.getElementById('modalTitle').textContent = titleMap[kind] || 'Action';
+  document.getElementById('modalInput').value = '';
+  document.getElementById('modal').style.display='flex';
+}
+function submitModal(){
+  const text = document.getElementById('modalInput').value.trim();
+  if(!text){ toast('Please enter details.'); return; }
+  if(MODAL_KIND==='task'){ addTask('Task: '+text, text, 'Non-credit'); }
+  else if(MODAL_KIND==='dpr'){ addNotification({title:'DPR request submitted', detail:text, tag:'Non-credit'}); }
+  else if(MODAL_KIND==='bs'){ addNotification({title:'Balance Sheet requested', detail:text, tag:'Compliance'}); }
+  else if(MODAL_KIND==='pacs'){ addNotification({title:'PACS contact shared', detail:'Phone: +91-7712-345678 • Office hours 10–5\n'+text, tag:'Directory'}); }
+  document.getElementById('modal').style.display='none';
+}
+
+/* Init */
+renderTray();
+</script>
+</body>
+</html>

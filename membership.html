@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PACS Surgi — Membership</title>
+
+<!-- Tiny loader so users see something while scripts load -->
+<style>
+  :root{
+    --brand:#2e7d32; --brand-25:#f5fbf6; --brand-50:#edf7ee; --brand-100:#dff1e2;
+    --text:#0f1f17; --muted:#5b6a62; --stroke:#e6e8eb; --bg:#f6fbf7; --card:#ffffff;
+    --accent:#1976d2; --warn:#ef6c00; --danger:#c62828; --amber:#ffa000; --violet:#6a4bc3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  a{color:inherit;text-decoration:none}
+  .appbar{position:sticky;top:0;z-index:60;color:#fff;background:linear-gradient(100deg,#184d1c,#2e7d32 60%,#43a047)}
+  .appbar .row{display:flex;align-items:center;gap:12px;padding:12px 16px;flex-wrap:wrap}
+  .logo{height:40px;width:40px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .logo img{width:100%;height:100%;object-fit:contain}
+  .ttl{font-weight:900;letter-spacing:.2px}.meta{opacity:.9;font-size:12px}
+  .nav{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .nav a{background:#ffffff1a;padding:8px 12px;border-radius:999px;border:1px solid #ffffff33;font-weight:800}
+  .nav a.active{background:#fff;color:#145a2a}
+  .icons{display:flex;gap:6px}
+  .iconbtn{position:relative;height:36px;width:36px;border-radius:10px;border:1px solid #ffffff33;background:#ffffff22;display:grid;place-items:center;cursor:pointer}
+  .badge{position:absolute;top:-6px;right:-6px;background:#ffeb3b;color:#145a2a;border-radius:999px;font-size:10px;padding:1px 5px;font-weight:800}
+  .tray{position:fixed;top:64px;right:16px;width:min(420px,95vw);background:#fff;color:var(--text);border:1px solid var(--stroke);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.15);display:none;z-index:80}
+  .tray .hd{padding:10px 12px;border-bottom:1px solid var(--stroke);font-weight:800;color:#145a2a;display:flex;justify-content:space-between;align-items:center}
+  .tray .item{padding:10px 12px;border-bottom:1px dashed var(--stroke);display:flex;gap:8px;align-items:flex-start}
+  .tray .item:last-child{border-bottom:none}
+  .tray .tag{font-size:11px;background:var(--brand-100);color:#145a2a;padding:2px 8px;border-radius:999px;border:1px solid var(--stroke)}
+  .tray .close{margin-left:auto;cursor:pointer;color:#9aa8a1}
+  .wrap{padding:18px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  @media (max-width:1200px){.grid{grid-template-columns:repeat(8,1fr)}}
+  @media (max-width:900px){.grid{grid-template-columns:repeat(6,1fr)}}
+  @media (max-width:760px){.grid{grid-template-columns:repeat(1,1fr)}}
+  .span-12{grid-column:span 12}.span-10{grid-column:span 10}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;box-shadow:0 4px 10px rgba(0,0,0,.05);overflow:hidden;display:flex;flex-direction:column;transition:.18s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(0,0,0,.07)}
+  .hd{padding:12px 14px;border-bottom:1px solid var(--stroke);color:#145a2a;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--brand-50)}
+  .sub{font-weight:700;color:#374151;font-size:12px}
+  .bd{padding:12px 14px}
+  .chart-wrap{width:100%;height:280px}
+  canvas{max-width:100%!important;max-height:100%!important}
+  .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  @media (max-width:1100px){.strip{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:680px){.strip{grid-template-columns:repeat(2,1fr)}}
+  .tile{position:relative;min-height:128px}
+  .face,.back{position:absolute;inset:0;border:1px solid var(--stroke);border-radius:14px;padding:12px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:.22s}
+  .back{opacity:0;transform:translateY(8px);background:var(--brand-25)}
+  .tile:hover .face{opacity:.02;transform:translateY(-6px)}
+  .tile:hover .back{opacity:1;transform:translateY(0)}
+  .kv{display:flex;flex-direction:column}
+  .label{font-size:12px;color:#536267}
+  .value{font-size:22px;font-weight:900;color:#145a2a}
+  .delta{font-size:12px;font-weight:800}.delta.pos{color:#1b5e20}.delta.neg{color:#c62828}
+  .pill{font-size:12px;padding:2px 8px;border:1px solid var(--stroke);border-radius:999px;background:#fff;color:#145a2a}
+  .small{font-size:11px;color:#5b6a62}
+  .hatch{background:repeating-linear-gradient(135deg,#f3f4f6 0 8px,#e9ecef 8px 16px);color:#6b7280!important}
+  .hatch .value{color:#6b7280}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .btn{background:var(--brand);color:#fff;border:none;padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+  .btn-ghost{background:#fff;color:#145a2a;border:1px solid var(--stroke);padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+  .btn-warn{background:var(--warn);color:#fff;border:none;padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+  .btn-red{background:var(--danger);color:#fff;border:none;padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+  .drawer{display:none;padding:8px;border-top:1px dashed var(--stroke)}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid var(--stroke);padding:6px 8px;text-align:center}
+  th{background:#f7faf8;color:#145a2a}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:95}
+  .panel{width:min(560px,96vw);background:#fff;border:1px solid var(--stroke);border-radius:14px;overflow:hidden}
+  .panel .hd{background:var(--brand-50)}
+  .panel .bd{padding:14px}
+  .panel textarea{width:100%;min-height:110px;border:1px solid var(--stroke);border-radius:10px;padding:10px;font-family:inherit}
+  .panel .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+  .chat{display:flex;flex-direction:column;gap:10px}
+  .bubble{padding:10px 12px;border:1px solid var(--stroke);background:#fff;border-radius:12px}
+  .bubble.ai{background:#f0f7f1;border-color:#b9e0bf}
+  .compose{display:flex;gap:8px}
+  .compose input{flex:1;border:1px solid var(--stroke);border-radius:10px;padding:10px;font-family:inherit}
+  .toast{position:fixed;right:16px;bottom:16px;background:#145a2a;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);display:none;z-index:99}
+</style>
+</head>
+<body>
+<!-- APP BAR -->
+<div class="appbar" role="banner">
+  <div class="row">
+    <a class="logo" href="index.html" title="Snapshot" aria-label="Go to Snapshot">
+      <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt="NABARD"/>
+    </a>
+    <div>
+      <div class="ttl">PACS Surgi — Membership</div>
+      <div class="meta">Durg, Chhattisgarh • Established 1957</div>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <a href="index.html">🏠 Snapshot</a>
+      <a href="pacs.html">🏛️ PACS</a>
+      <a href="membership.html" class="active" aria-current="page">👥 Membership</a>
+      <a href="loan.html">💳 Loan</a>
+      <a href="noncredit.html">🛒 Non-credit</a>
+      <a href="reporting.html">📤 Reporting</a>
+    </nav>
+    <div class="icons">
+      <button class="iconbtn" onclick="toggleTray()" title="Notifications" aria-label="Notifications">🔔 <span id="bellBadge" class="badge" style="display:none"></span></button>
+      <button class="iconbtn" onclick="logout()" title="Logout" aria-label="Logout">⎋</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRAY -->
+<div id="tray" class="tray" role="region" aria-label="Notifications">
+  <div class="hd"><span>Notifications</span><button class="btn-ghost" onclick="clearNotifications()">Clear all</button></div>
+  <div id="trayItems"></div>
+  <div style="padding:8px 12px" class="hint">Tasks also appear in <b>Reporting</b>.</div>
+</div>
+
+<div class="wrap">
+
+  <!-- OVERVIEW / REVEAL TILES -->
+  <div class="strip">
+
+    <!-- Population (grey only) -->
+    <div class="tile">
+      <div class="face hatch">
+        <div class="kv"><div class="label">Overall Population</div><div class="value"></div></div>
+              </div>
+      <div class="back hatch"></div>
+    </div>
+
+    <!-- Eligible farmers (grey only) -->
+    <div class="tile">
+      <div class="face hatch">
+        <div class="kv"><div class="label">Total Farmers (eligible)</div><div class="value"></div></div>
+              </div>
+      <div class="back hatch"></div>
+    </div>
+
+    <!-- Members (peer in corner / flip shows LY) -->
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Members</div><div class="value" id="tMembers">—</div><div class="small">Peer <b id="peerMembers">—</b></div></div>
+        <div class="delta pos" id="tMembersDelta">—</div>
+      </div>
+      <div class="back">
+        <div class="kv"><div class="label">Last year</div><div class="value" id="tMembersLY">—</div></div>
+        <div class="delta" id="tMembersYoY">— YoY</div>
+      </div>
+    </div>
+
+    <!-- Borrowers + penetration -->
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Borrowing members</div><div class="value" id="tBor">—</div><div class="small">Peer best borrower% <b id="peerBorPct">%</b></div></div>
+        <div class="delta pos" id="tPen">—</div>
+      </div>
+      <div class="back">
+        <div class="kv"><div class="label">Last year</div><div class="value" id="tBorLY">—</div></div>
+        <div class="delta" id="tPenLY">—</div>
+      </div>
+    </div>
+
+    <!-- Non-borrowers + unlock -->
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Non-borrowers</div><div class="value" id="tNbor">—</div></div>
+        <div class="delta pos" id="tUnlock">—</div>
+      </div>
+      <div class="back">
+        <div class="kv"><div class="label">Last year</div><div class="value" id="tNborLY">—</div></div>
+        <div class="delta" id="tUnlockLY">—</div>
+      </div>
+    </div>
+
+    <!-- Households with drawer -->
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Households (PACS area)</div><div class="value" id="tHH">—</div></div>
+        <button class="btn-ghost" onclick="toggleDrawer('hhDrawer')">Village-wise</button>
+      </div>
+      <div class="back">
+        <div class="kv"><div class="label">Last year</div><div class="value" id="tHHLY">—</div></div>
+        <div class="delta">Validate with Panchayat</div>
+      </div>
+      <div id="hhDrawer" class="drawer">
+        <table id="hhTbl"><tr><th>Village</th><th>Households</th></tr></table>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="exportHouseholds()">Export CSV</button>
+          <button class="btn" onclick="openTaskModal('Validate HH counts with Panchayat register')">Raise task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PEER SPOTLIGHT + KPIs -->
+  <div class="grid" style="margin-top:14px">
+    <div class="card span-6">
+      <div class="hd">Best-in-class Spotlight — <b>Karanja Bhillai PACS</b> <span class="sub">YoY & last quarter conversion</span></div>
+      <div class="bd">
+          <div class="chart-wrap"><canvas id="spotlight"></canvas></div>
+          <div class="hint" style="margin-top:6px">Conversion = members who moved from non-borrower → borrower in last quarter.</div>
+       </div>
+    </div>
+    <div class="card span-6">
+      <div class="hd">Surgi vs Peer Avg vs Dhaba <span class="sub">KPIs</span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="peerBars"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="exportPeer()">Download peer report</button>
+          <button class="btn" onclick="openTaskModal('Exposure visit to Dhaba — adopt mobilisation playbook')">Exposure visit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEMOGRAPHICS (tabbed) -->
+  <div class="grid">
+    <div class="card span-12">
+      <div class="hd">
+        Member Demographics — Overall / Village
+        <div>
+          <select id="demoScope" class="pill" onchange="renderDemographics()">
+            <option value="overall">Overall PACS</option>
+            <option>Utai</option><option>Dhaba</option><option>Surgi</option><option>Somni</option><option>Karanja Bhillai</option>
+          </select>
+          <button class="btn" id="tabAge" onclick="setDemoTab('age')">Age</button>
+          <button class="btn-ghost" id="tabGender" onclick="setDemoTab('gender')">Gender</button>
+          <button class="btn-ghost" id="tabLand" onclick="setDemoTab('land')">Land</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="demoChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadDemoCSV()">Download CSV</button>
+          <button class="btn" onclick="openTaskModal('Create member lists by demographic filters')">Raise task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BORROWERS / NON-BORROWERS DEMOGRAPHICS -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Borrowing Members — Demographics
+        <div>
+          <button class="btn" id="bAge" onclick="setBorTab('age')">Age</button>
+          <button class="btn-ghost" id="bGender" onclick="setBorTab('gender')">Gender</button>
+          <button class="btn-ghost" id="bLand" onclick="setBorTab('land')">Land</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="borChart"></canvas></div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadBorCSV()">Export CSV</button><button class="btn" onclick="openTaskModal('Top-up KCC + inputs for prime borrower cohorts')">Raise task</button></div>
+      </div>
+    </div>
+    <div class="card span-6">
+      <div class="hd">Non-borrowers — Demographics
+        <div>
+          <button class="btn" id="nAge" onclick="setNborTab('age')">Age</button>
+          <button class="btn-ghost" id="nGender" onclick="setNborTab('gender')">Gender</button>
+          <button class="btn-ghost" id="nLand" onclick="setNborTab('land')">Land</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="nborChart"></canvas></div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadNborCSV()">Export CSV</button><button class="btn" onclick="openTaskModal('Outreach to non-borrowers: SHG camps + WhatsApp')">Raise task</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VILLAGE-WISE MEMBER LIST DRILLDOWN -->
+  <div class="grid">
+    <div class="card span-12">
+      <div class="hd">Village-wise members — drill-down & export
+        <div>
+          <select id="listVillage" class="pill" onchange="renderMemberList()">
+            <option>Utai</option><option>Dhaba</option><option>Surgi</option><option>Somni</option><option>Karanja Bhillai</option>
+          </select>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="drawer" style="display:block">
+          <table id="memberTbl">
+            <tr><th>Name</th><th>Age</th><th>Gender</th><th>Borrower?</th><th>Landholding (ac)</th></tr>
+          </table>
+          <div class="toolbar">
+            <button class="btn-ghost" onclick="exportMemberList()">Download CSV</button>
+            <button class="btn" onclick="openTaskModal('Village drill-down shared with board')">Generate board summary</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DPD & CREDITWORTHINESS -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Members by DPD (Aging Ladder) <span class="sub">Current • 1–30 • 31–60 • 61–90 • >90</span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="dpdChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn" onclick="openTaskModal('Assign visits for DPD>30')">Assign visits</button>
+          <button class="btn-red" onclick="openTaskModal('Escalate DPD>90 to legal')">Escalate >90</button>
+          <button class="btn-ghost" onclick="exportDPD()">Export overdue list</button>
+        </div>
+      </div>
+    </div>
+    <div class="card span-6">
+      <div class="hd">Creditworthiness Heatmap <span class="sub">Village × Score (High/Med/Low)</span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="scoreHeat"></canvas></div>
+        <div class="toolbar">
+          <button class="btn" onclick="openTaskModal('Generate top-up eligibility for High score')">Top-up list</button>
+          <button class="btn-ghost" onclick="exportScores()">Export H/M/L lists</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENGAGEMENT (greyed metric) -->
+  <div class="grid">
+    <div class="card span-12">
+      <div class="hd"><span class="small">Engagement & Product Uptake</span> <span class="sub small">greyed (derived later)</span></div>
+      <div class="bd">
+        <div class="chart-wrap hatch" style="display:flex;align-items:center;justify-content:center;border:1px dashed var(--stroke);border-radius:12px">
+          <div class="small">— % members purchasing inputs over time (to be derived)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI INSIGHTS -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">AI Insights <span class="sub">What top PACS did</span></div>
+      <div class="bd chat">
+        <div class="bubble ai" id="aiList">
+          • Dhaba converted <b>14%</b> of non-borrowers last quarter via <b>doorstep KCC camps</b> & <b>seed+fert bundle</b> vouchers.<br/>
+          • Peer avg borrower% is <b id="aiPeer">—%</b>; Surgi at <b id="aiPen">—%</b>. Focus: <b>Somni</b>, <b>Karanja</b>.<br/>
+          • Women borrowers at <b>30%</b> — dairy SHG tie-up raised this by <b>+6 pp</b> in Dhaba; replicate.
+        </div>
+        <div class="compose">
+          <input id="chatInput" placeholder="Ask the assistant (demo)…"/>
+          <button class="btn" onclick="fakeReply()">Send</button>
+        </div>
+      </div>
+    </div>
+    <div class="card span-6">
+      <div class="hd">Quick Actions</div>
+      <div class="bd">
+        <div class="toolbar">
+          <button class="btn" onclick="openTaskModal('Village conversion drive (Somni + Karanja): targets & owners')">Start conversion drive</button>
+          <button class="btn" onclick="openTaskModal('Women-only dairy + KCC camp (Dhaba)')">Women camp</button>
+          <button class="btn-ghost" onclick="toggleTray()">Open notifications</button>
+        </div>
+        <div class="small" style="margin-top:6px">All actions are posted to Notifications and appear in Reporting.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- MODAL -->
+<div id="taskModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+  <div class="panel">
+    <div class="hd">Raise task</div>
+    <div class="bd">
+      <label class="small">Describe (who/what/when). Saved to Notifications & Reporting.</label>
+      <textarea id="taskText" placeholder="e.g., Outreach camp in Dhaba & Surgi next Friday; send MIS daily."></textarea>
+      <div class="actions">
+        <button class="btn-ghost" onclick="document.getElementById('taskModal').style.display='none'">Cancel</button>
+        <button class="btn" onclick="submitTask()">Save task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- Robust Chart.js loader with fallback and guarded init -->
+<script>
+(function(){
+  // Simple toast
+  function toast(msg){
+    const t=document.getElementById('toast'); if(!t) return;
+    t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',1800);
+  }
+
+  // Load a script with Promise
+  function loadScript(src){
+    return new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src=src; s.defer=true;
+      s.onload=()=>resolve();
+      s.onerror=()=>reject(new Error('Failed to load '+src));
+      document.head.appendChild(s);
+    });
+  }
+
+  // Try primary CDN, then fallback
+  async function ensureChart(){
+    if (window.Chart) return;
+    try {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js');
+
+} catch(e){
+  console.warn(e);
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
+  } catch(e2){
+    console.error(e2);
+  }
+}
+
+    if (!window.Chart){
+      toast('Could not load charts (network/CDN blocked). Showing page without charts.');
+    }
+  }
+
+  // All your app code lives in here; we only run after Chart (if available)
+  function runApp(){
+    /* =================== HELPERS / STORAGE / TRAY =================== */
+    function logout(){ try{ localStorage.removeItem('pacs_auth'); }catch{} location.href='index.html'; }
+    window.logout=logout;
+    function getLS(k,def){ try{return JSON.parse(localStorage.getItem(k)) ?? def;}catch{ return def; } }
+    function setLS(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+    function addNotification({title,detail,tag='Membership'}){
+      const items=getLS('pacs_notifications',[]); items.unshift({id:Date.now(),title,detail,tag,ts:new Date().toISOString()});
+      setLS('pacs_notifications',items); renderTray(); toast('✔ '+title);
+    }
+    window.openTaskModal=function(prefill=''){ document.getElementById('taskModal').style.display='flex'; const ta=document.getElementById('taskText'); ta.value=prefill; setTimeout(()=>ta.focus(),0); };
+    window.submitTask=function(){ const v=document.getElementById('taskText').value.trim(); if(!v){toast('Please enter the task');return;} addNotification({title:'Task — '+v,detail:v}); document.getElementById('taskModal').style.display='none'; };
+    window.toast=toast;
+    function renderTray(){
+      const items=getLS('pacs_notifications',[]);
+      const box=document.getElementById('trayItems'); if(!box) return;
+      box.innerHTML='';
+      const badge=document.getElementById('bellBadge'); if(badge){ badge.style.display=items.length?'inline-block':'none'; badge.textContent=items.length; }
+      if(!items.length){ box.innerHTML='<div class="item"><span class="tag">Info</span><div>No notifications.</div></div>'; return; }
+      items.forEach(it=>{
+        const div=document.createElement('div'); div.className='item';
+        div.innerHTML=`<span class="tag">${it.tag||'Info'}</span><div><b>${it.title}</b><div class="small">${it.detail||''}</div></div><span class="close" onclick="dismissNotif(${it.id})">✕</span>`;
+        box.appendChild(div);
+      });
+    }
+    window.dismissNotif=function(id){ const items=getLS('pacs_notifications',[]).filter(x=>x.id!==id); setLS('pacs_notifications',items); renderTray(); };
+    window.clearNotifications=function(){ setLS('pacs_notifications',[]); renderTray(); };
+    window.toggleTray=function(){ const t=document.getElementById('tray'); if(!t) return; t.style.display=(t.style.display==='block'?'none':'block'); };
+
+    /* =================== DATA (DEMO / CONSISTENT) =================== */
+    const villages=['Arla','Beltikri','Buchi Bharda','Kotrabhatha','Kumhalori','Malpuri','Mudpar','Surgi'];
+    const members=[269,212,384,211,162,275,340,1040];
+    const borrowers=[127,81,103,191,76,100,180,382];
+    const nonBorrowers=[142,131,108,193,86,175,160,658];
+    const households=[0,0,0,0,0,0,0,0,0];
+
+    // Demographics (overall)
+    const ageBuckets=['<30','30–39','40–49','50–59','60+'];
+    const demoAgeAll=[192,1703,494,332,174];
+    const demoGenderLabels=['Male','Female'];
+    const demoGenderAll=[2155,663];
+    const landBuckets=['Marginal','Small','Semi-Medium','Medium','Large'];
+    const landAll=[2118,134,35,3,1];
+
+    // Split borrower/non-borrower
+    const demoAgeBor=[137,356,385,235,127];
+    const demoAgeNBo=demoAgeAll.map((x,i)=>x-demoAgeBor[i]);
+    const demoGenderBor=[1147,243], demoGenderNBo=[1008,420];
+    const landBor=[1381,119,30,3,1], landNBo=landAll.map((x,i)=>x-landBor[i]);
+
+    // Peer pack
+    const peerPACS=['Utai','Dhaba','Surgi','Somni','Karanja'];
+    const peerMembers=[10810,2398,2819,5542,1887];
+    const peerBorrowPct=[7,66,43,45,46]; // %
+    const peerGrowth=[0.8,6.3,2.4,5.2,4.3];        // YoY %
+    const peerConvLastQ=[80,85,24,642,60];          // conversions last quarter
+
+    /* =================== OVERVIEW NUMBERS =================== */
+    function $(id){ return document.getElementById(id); }
+    function buildHouseholdTable(){
+      const tbl=$('hhTbl'); if(!tbl) return;
+      villages.forEach((v,i)=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${v}</td><td>${households[i].toLocaleString('en-IN')}</td>`; tbl.appendChild(tr); });
+    }
+    function computeOverview(){
+      const totM=2819; // Total members
+      const lyM=2749; // Last year members
+      const newMembers=70; // New members this year
+      const totN=Math.round(totM * 0.56); // Non-borrowers: 56% of total
+      const totB=totM-totN; // Borrowers: remaining members
+      const lyB=1180; // Last year borrowers
+      const lyN=lyM-lyB;
+      const pen=(totB/totM)*100, penLY=(lyB/lyM)*100;
+      const hh=households.reduce((a,b)=>a+b,0), hhLY=hh-40;
+
+      $('tMembers').textContent=totM.toLocaleString('en-IN');
+      $('tMembersLY').textContent=lyM.toLocaleString('en-IN');
+      $('tMembersDelta').textContent=`+${newMembers} vs Last Year`;
+      $('tMembersYoY').textContent=`+${((newMembers/lyM)*100).toFixed(1)}% YoY`;
+      $('peerMembers').textContent = peerMembers[peerPACS.indexOf('Dhaba')].toLocaleString('en-IN');
+
+      $('tBor').textContent=totB.toLocaleString('en-IN');
+      $('tBorLY').textContent=lyB.toLocaleString('en-IN');
+      $('tPen').textContent=`${pen.toFixed(1)}% penetration`;
+      $('tPenLY').textContent=`${penLY.toFixed(1)}% LY`;
+      $('peerBorPct').textContent = peerBorrowPct[peerPACS.indexOf('Dhaba')].toFixed(1);
+
+      $('tNbor').textContent=totN.toLocaleString('en-IN');
+      $('tNborLY').textContent=lyN.toLocaleString('en-IN');
+      $('tUnlock').textContent=`${((totN/totM)*100).toFixed(1)}%`;
+      $('tUnlockLY').textContent=`${(100-penLY).toFixed(1)}% LY`;
+
+      $('tHH').textContent=hh.toLocaleString('en-IN');
+      $('tHHLY').textContent=hhLY.toLocaleString('en-IN');
+
+      $('aiPen').textContent=pen.toFixed(1);
+      $('aiPeer').textContent=(peerBorrowPct.reduce((a,b)=>a+b,0)/peerBorrowPct.length).toFixed(1);
+    }
+
+    /* =================== CHARTS CONFIG =================== */
+    function setChartDefaults(){
+      if (!window.Chart) return;
+      Chart.defaults.font.family='Inter,Arial';
+      Chart.defaults.plugins.tooltip.cornerRadius=8;
+    }
+    const valueLabel = {
+      id:'val',
+      afterDatasetsDraw(c){
+        if(!c || !c.data || !c.data.datasets) return;
+        const {ctx}=c; ctx.save();
+        c.data.datasets.forEach((ds,i)=>{
+          const meta=c.getDatasetMeta(i);
+          (meta.data||[]).forEach((pt,ix)=>{
+            const v=ds.data[ix]; if(v==null||isNaN(v)) return;
+            const {x,y}=pt.tooltipPosition();
+            ctx.fillStyle='#374151'; ctx.font='12px Inter,Arial'; ctx.textAlign='center';
+            ctx.fillText(String(v),x,y-6);
+          });
+        });
+        ctx.restore();
+      }
+    };
+
+    function renderSpotlight(){
+      if(!window.Chart) return;
+      const karanja = { nbStartQ: 988, conversionsQ: 60 };
+      const remaining = karanja.nbStartQ - karanja.conversionsQ;
+      const funnel = [karanja.nbStartQ, karanja.conversionsQ, remaining];
+      const yoy = 4.3; // YoY growth for Karanja Bhillai
+      new Chart(document.getElementById('spotlight'),{
+        type:'bar',
+        data:{labels:['NB at Q start','Converted this Q','Remaining'],
+          datasets:[{label:'Count',data:funnel,backgroundColor:['#fb8c00','#2e7d32','#c62828']}]},
+        options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} members`},footer:()=>`Karanja Bhillai YoY: +${yoy}%`}},scales:{y:{beginAtZero:true}}},
+        plugins:[valueLabel]
+      });
+    }
+
+   function renderPeerBars(){
+  if(!window.Chart) return;
+  const kpis=['Member penetration %','Borrower %','YoY member growth %','Qtr conversion % of NB'];
+  const surgi=[45,45,4,0];
+  const peer=[50, 50, 5, 0.83];
+  const dhabaI = peerPACS.indexOf('Dhaba');
+  const dhaba=[peerBorrowPct[dhabaI], peerBorrowPct[dhabaI], peerGrowth[dhabaI], 0.2];
+
+  const median = (arr)=>{const s=[...arr].sort((a,b)=>a-b); return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2;};
+  const medianBorrowers = median(peerBorrowPct).toFixed(1);
+
+  new Chart(document.getElementById('peerBars'),{
+    data:{
+      labels:kpis,
+      datasets:[
+        {type:'bar',label:'Surgi', data:surgi, backgroundColor:'#1976d2'},
+        {type:'bar',label:'Peer Avg', data:peer, backgroundColor:'#6a4bc3'},
+        {type:'bar',label:'Dhaba (best)', data:dhaba, backgroundColor:'#2e7d32'},
+        
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=> `${c.dataset.label}: ${c.raw}%`}}},
+      scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}
+    }
+  });
+} // ← this brace was missing
+
+
+
+    /* Demographics (tabbed) */
+    let demoTab='age', demoChart;
+    window.setDemoTab=function(t){ demoTab=t; ['tabAge','tabGender','tabLand'].forEach(id=>document.getElementById(id).className='btn-ghost'); document.getElementById(t==='age'?'tabAge':t==='gender'?'tabGender':'tabLand').className='btn'; renderDemographics(); };
+    window.renderDemographics=function(){
+      if(!window.Chart) return;
+      const scope=document.getElementById('demoScope').value;
+      const ctx=document.getElementById('demoChart').getContext('2d');
+      if(demoChart) demoChart.destroy();
+      if(demoTab==='age'){
+        demoChart=new Chart(ctx,{type:'bar',data:{labels:ageBuckets,datasets:[{label:(scope==='overall'?'Members':'Members')+' (age)',data:demoAgeAll,backgroundColor:'#1976d2'}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}},plugins:[valueLabel]});
+      }else if(demoTab==='gender'){
+        demoChart=new Chart(ctx,{type:'bar',data:{labels:demoGenderLabels,datasets:[{label:'Members',data:demoGenderAll,backgroundColor:['#2e7d32','#6a4bc3']}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}},plugins:[valueLabel]});
+      }else{
+        demoChart=new Chart(ctx,{type:'bar',data:{labels:landBuckets,datasets:[{label:'Members',data:landAll,backgroundColor:'#ffb300'}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true},x:{title:{display:true,text:'Operational holding size'}}}},plugins:[valueLabel]});
+      }
+    }
+    window.downloadDemoCSV=function(){
+      let rows=[['Bucket','Members']];
+      if(demoTab==='age'){ ageBuckets.forEach((l,i)=>rows.push([l,demoAgeAll[i]])); }
+      else if(demoTab==='gender'){ demoGenderLabels.forEach((l,i)=>rows.push([l,demoGenderAll[i]])); }
+      else{ landBuckets.forEach((l,i)=>rows.push([l,landAll[i]])); }
+      downloadCSV('membership_'+demoTab+'.csv',rows);
+    }
+
+    /* Borrowers / Non-borrowers (tabbed) */
+    let borTab='age', nborTab='age', borChart, nborChart;
+    window.setBorTab=function(t){ borTab=t; ['bAge','bGender','bLand'].forEach(id=>document.getElementById(id).className='btn-ghost'); document.getElementById(t==='age'?'bAge':t==='gender'?'bGender':'bLand').className='btn'; renderBorNbor(); };
+    window.setNborTab=function(t){ nborTab=t; ['nAge','nGender','nLand'].forEach(id=>document.getElementById(id).className='btn-ghost'); document.getElementById(t==='age'?'nAge':t==='gender'?'nGender':'nLand').className='btn'; renderBorNbor(); };
+    function renderBorNbor(){
+      if(borChart) borChart.destroy(); if(nborChart) nborChart.destroy();
+      if(!window.Chart) return;
+      const bc=document.getElementById('borChart').getContext('2d');
+      const nc=document.getElementById('nborChart').getContext('2d');
+      if(borTab==='age'){ borChart=new Chart(bc,{type:'bar',data:{labels:ageBuckets,datasets:[{label:'Borrowers',data:demoAgeBor,backgroundColor:'#2e7d32'}]},options:{responsive:true,scales:{y:{beginAtZero:true}}},plugins:[valueLabel]}); }
+      else if(borTab==='gender'){ borChart=new Chart(bc,{type:'bar',data:{labels:demoGenderLabels,datasets:[{label:'Borrowers',data:demoGenderBor,backgroundColor:['#2e7d32','#6a4bc3']}]},options:{responsive:true,scales:{y:{beginAtZero:true}}},plugins:[valueLabel]}); }
+      else{ borChart=new Chart(bc,{type:'bar',data:{labels:landBuckets,datasets:[{label:'Borrowers',data:landBor,backgroundColor:'#2e7d32'}]},options:{responsive:true,scales:{y:{beginAtZero:true}}},plugins:[valueLabel]}); }
+
+      if(nborTab==='age'){ nborChart=new Chart(nc,{type:'bar',data:{labels:ageBuckets,datasets:[{label:'Non-borrowers',data:demoAgeNBo,backgroundColor:'#c62828'}]},options:{responsive:true,scales:{y:{beginAtZero:true}}},plugins:[valueLabel]}); }
+      else if(nborTab==='gender'){ nborChart=new Chart(nc,{type:'bar',data:{labels:demoGenderLabels,datasets:[{label:'Non-borrowers',data:demoGenderNBo,backgroundColor:['#c62828','#ff7043']}]},options:{responsive:true,scales:{y:{beginAtZero:true}}},plugins:[valueLabel]}); }
+      else{ nborChart=new Chart(nc,{type:'bar',data:{labels:landBuckets,datasets:[{label:'Non-borrowers',data:landNBo,backgroundColor:'#c62828'}]},options:{responsive:true,scales:{y:{beginAtZero:true}}},plugins:[valueLabel]}); }
+    }
+
+    /* Village member list (dummy) */
+    const memberProto = (v)=> Array.from({length:14},(_,i)=>({
+      name:`Surgi Member ${i+1}`, age: 28+((i*3)%35), gender: (i%3===0?'Female':'Male'),
+      bor: (i%4!==0), land: [0.8,1.2,1.8,2.4,3.0][i%5]
+    }));
+    window.renderMemberList=function(){
+      const v=document.getElementById('listVillage').value; const data=memberProto(v);
+      const tbl=document.getElementById('memberTbl'); tbl.innerHTML='<tr><th>Name</th><th>Age</th><th>Gender</th><th>Borrower?</th><th>Landholding (ac)</th></tr>';
+      data.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.name}</td><td>${r.age}</td><td>${r.gender}</td><td>${r.bor?'Yes':'No'}</td><td>${r.land}</td>`; tbl.appendChild(tr); });
+    }
+    window.exportMemberList=function(){
+      const rows=[['Name','Age','Gender','Borrower','Landholding (ac)']];
+      [...document.querySelectorAll('#memberTbl tr')].slice(1).forEach(tr=>{
+        const t=[...tr.children].map(td=>td.textContent.trim()); rows.push(t);
+      });
+      downloadCSV('members_village.csv',rows);
+    }
+
+    /* DPD Ladder */
+    function renderDPD(){
+      if(!window.Chart) return;
+      const dpdBuckets=['1–30','31–60','61–90','>90'];
+      const dpdByVillage={
+        'Utai':[420,120,60,32,18],'Dhaba':[310,90,48,24,12],'Surgi':[280,70,36,18,11],'Somni':[240,60,32,16,10],'Karanja Bhillai':[160,40,22,12,7]
+      };
+      const colors=['#43a047','#66bb6a','#ffb300','#fb8c00','#c62828'];
+      const datasets=villages.map((v,idx)=>({label:v,data:dpdByVillage[v],backgroundColor:colors[idx%colors.length]}));
+      new Chart(document.getElementById('dpdChart'),{
+        type:'bar', data:{labels:dpdBuckets, datasets}, options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}
+      });
+    }
+    window.exportDPD=function(){
+      const rows=[['Village','Current','1–30','31–60','61–90','>90'],
+        ['Utai',420,120,60,32,18],['Dhaba',310,90,48,24,12],['Surgi',280,70,36,18,11],['Somni',240,60,32,16,10],['Karanja Bhillai',160,40,22,12,7]];
+      downloadCSV('dpd_aging.csv',rows);
+    }
+
+    /* Creditworthiness heatmap (stacked horizontal bars) */
+    function renderScoreHeat(){
+      if(!window.Chart) return;
+      const scoreBands=['High','Medium','Low'];
+      const scoreShare={'Utai':[58,30,12],'Dhaba':[52,34,14],'Surgi':[46,38,16],'Somni':[44,40,16],'Karanja Bhillai':[50,36,14]};
+      const ds=scoreBands.map((b,i)=>({label:b,data:villages.map(v=>scoreShare[v][i]),backgroundColor:['#2e7d32','#ffb300','#c62828'][i],stack:'hml'}));
+      new Chart(document.getElementById('scoreHeat'),{
+        type:'bar', data:{labels:villages,datasets:ds},
+        options:{responsive:true,indexAxis:'y',plugins:{legend:{position:'right'}},scales:{x:{max:100,stacked:true,ticks:{callback:v=>v+'%'}},y:{stacked:true}}}
+      });
+    }
+    window.exportScores=function(){
+      const rows=[['Village','High %','Medium %','Low %'],
+        ['Utai',58,30,12],['Dhaba',52,34,14],['Surgi',46,38,16],['Somni',44,40,16],['Karanja Bhillai',50,36,14]];
+      downloadCSV('creditworthiness_hml.csv',rows);
+    }
+
+    /* CSV util */
+    function downloadCSV(filename, rows){
+      const rowfn = r => r.map(v=>`"${(v??'').toString().replace(/"/g,'""')}"`).join(',');
+      const csv=rows.map(rowfn).join('\n');
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),700);
+    }
+    window.exportHouseholds=function(){ const rows=[['Village','Households']]; villages.forEach((v,i)=>rows.push([v,households[i]])); downloadCSV('households.csv',rows); };
+    window.exportPeer=function(){
+      const surgiI = peerPACS.indexOf('Surgi');
+      const dhabaI = peerPACS.indexOf('Dhaba');
+      const rows=[["KPI","Surgi","Peer Avg","Dhaba"],
+        ['Member penetration %',peerBorrowPct[surgiI],(peerBorrowPct.reduce((a,b)=>a+b,0)/peerBorrowPct.length).toFixed(1),peerBorrowPct[dhabaI]],
+        ['Borrower %',peerBorrowPct[surgiI],(peerBorrowPct.reduce((a,b)=>a+b,0)/peerBorrowPct.length).toFixed(1),peerBorrowPct[dhabaI]],
+        ['YoY member growth %',peerGrowth[surgiI],(peerGrowth.reduce((a,b)=>a+b,0)/peerGrowth.length).toFixed(1),peerGrowth[dhabaI]],
+        ['Qtr conversion % of NB',0,0.83,0.2]];
+      downloadCSV('peer_membership_compare.csv',rows);
+    }
+
+    /* Drawers */
+    window.toggleDrawer=function(id){ const el=document.getElementById(id); if(!el) return; el.style.display = el.style.display==='block'?'none':'block'; };
+
+    /* AI demo */
+    window.fakeReply=function(){
+      const inp=document.getElementById('chatInput'); const val=inp.value.trim(); if(!val){toast('Type a prompt (demo)');return;}
+      const box=document.getElementById('aiList'); const user=document.createElement('div'); user.className='bubble'; user.textContent=val; box.parentNode.insertBefore(user, box.nextSibling);
+      const r=document.createElement('div'); r.className='bubble ai'; r.style.marginTop='6px';
+      r.innerHTML='• Next best action: weekend camp in <b>Somni</b> (youth heavy) — target 60 sign-ups; nudge Mon/Wed.<br/>• Share SHG success story from Dhaba on local WhatsApp.';
+      box.parentNode.insertBefore(r, user.nextSibling); inp.value="";
+    };
+
+    /* INIT (only call Chart bits if Chart exists) */
+    function init(){
+      renderTray();
+      buildHouseholdTable();
+      computeOverview();
+
+      if (window.Chart){
+        setChartDefaults();
+        renderSpotlight();
+        renderPeerBars();
+        window.setDemoTab('age'); window.renderDemographics();
+        window.setBorTab('age'); window.setNborTab('age');
+        // setBorTab calls renderBorNbor via set functions
+        window.renderMemberList();
+        renderDPD();
+        renderScoreHeat();
+      }else{
+        // Non-chart UI still usable
+        window.setDemoTab('age'); window.renderMemberList();
+      }
+    }
+
+    // Start after DOM ready
+    if (document.readyState==='loading'){
+      document.addEventListener('DOMContentLoaded', init, {once:true});
+    }else{
+      init();
+    }
+  }
+
+  // Boot
+  (async function boot(){
+    // Ensure DOM first so toast exists for any errors
+    if (document.readyState==='loading'){
+      await new Promise(res=>document.addEventListener('DOMContentLoaded', res, {once:true}));
+    }
+    await ensureChart();
+    runApp();
+  })();
+})();
+</script>
+</body>
+</html>

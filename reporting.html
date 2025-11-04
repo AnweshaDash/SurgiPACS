@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PACS Utai — Reporting</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+<style>
+  :root{
+    --brand:#2e7d32; --brand-25:#f5fbf6; --brand-50:#edf7ee; --brand-100:#dff1e2;
+    --text:#0f1f17; --muted:#5b6a62; --stroke:#e6e8eb; --bg:#f6fbf7; --card:#ffffff;
+    --accent:#1976d2; --warn:#ef6c00; --danger:#c62828; --amber:#ffa000; --violet:#6a4bc3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  a{color:inherit; text-decoration:none}
+
+  /* App bar (same look as loan.html) */
+  .appbar{position:sticky; top:0; z-index:50; color:#fff;
+    background:linear-gradient(100deg,#184d1c, #2e7d32 60%, #43a047)}
+  .appbar .row{display:flex; align-items:center; gap:12px; padding:12px 16px}
+  .logo{height:40px; width:40px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .logo img{width:100%; height:100%; object-fit:contain}
+  .ttl{font-weight:900; letter-spacing:.2px}
+  .meta{opacity:.9; font-size:12px}
+  .grow{flex:1}
+  .nav{display:flex; gap:8px; flex-wrap:wrap}
+  .nav a{background:#ffffff1a; padding:8px 12px; border-radius:999px; border:1px solid #ffffff33; font-weight:700}
+  .nav a.active{background:#fff; color:#145a2a}
+
+  /* Layout & cards */
+  .wrap{padding:18px}
+  .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:14px}
+  @media (max-width:1200px){ .grid{grid-template-columns:repeat(8,1fr)} }
+  @media (max-width:900px){ .grid{grid-template-columns:repeat(6,1fr)} }
+  @media (max-width:768px){ .grid{grid-template-columns:repeat(1,1fr)} }
+  .span-12{grid-column:span 12}
+
+  .card{
+    background:var(--card); border:1px solid var(--stroke); border-radius:16px;
+    box-shadow:0 4px 10px rgba(0,0,0,.05); overflow:hidden; display:flex; flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .card:hover{transform:translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.06)}
+  .hd{padding:12px 14px; border-bottom:1px solid var(--stroke); color:#145a2a; font-weight:900; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--brand-50)}
+  .sub{font-weight:700; color:#374151; font-size:12px}
+  .bd{padding:12px 14px}
+
+  .tab, .btn, .btn-ghost{
+    padding:8px 12px; border-radius:11px; font-weight:800; cursor:pointer; border:1px solid var(--stroke); background:#fff; color:#145a2a;
+  }
+  .btn{background:var(--brand); color:#fff; border:none}
+  .btn-ghost{background:#fff}
+  .badge{font-size:12px; padding:2px 8px; border:1px solid var(--stroke); border-radius:999px; color:#145a2a; background:var(--brand-25)}
+
+  /* Notifications list */
+  .notif-list{display:flex; flex-direction:column; gap:10px}
+  .notif-item{border:1px solid var(--stroke); border-radius:12px; background:#fff; padding:10px 12px; display:flex; gap:10px; align-items:flex-start}
+  .notif-item .tag{font-size:11px; background:var(--brand-100); color:#145a2a; padding:2px 8px; border-radius:999px; border:1px solid var(--stroke)}
+  .notif-item .ttl{font-weight:800; color:#145a2a}
+  .notif-item.flash{box-shadow:0 0 0 3px rgba(25,118,210,.25) inset}
+
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th,td{border:1px solid var(--stroke); padding:8px 10px; text-align:center}
+  th{background:var(--brand-50); color:#145a2a}
+</style>
+</head>
+<body>
+
+<!-- App bar -->
+<div class="appbar">
+  <div class="row">
+    <a class="logo" href="index.html" aria-label="NABARD">
+      <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt=""/>
+    </a>
+    <div>
+      <div class="ttl">PACS Utai — Reporting</div>
+      <div class="meta">Durg, Chhattisgarh • Established 1982</div>
+    </div>
+    <div class="grow"></div>
+    <nav class="nav">
+      <a href="index.html">🏠 Snapshot</a>
+      <a href="pacs.html">🏛️ PACS</a>
+      <a href="membership.html">👥 Membership</a>
+      <a href="loan.html">💳 Loan</a>
+      <a href="noncredit.html">🛒 Non-credit</a>
+      <a href="reporting.html" class="active">📤 Reporting</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Notifications (from bell tray) -->
+  <div class="card span-12" id="notifCard" style="display:none">
+    <div class="hd">Notifications <span class="badge" id="notifCount">0</span></div>
+    <div class="bd">
+      <div id="notifList" class="notif-list"></div>
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <button class="btn-ghost" onclick="clearNotifications()">Clear all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports & Workflows -->
+  <div class="card span-12" style="margin-top:14px">
+    <div class="hd">Reports & Workflows <span class="badge">Compliance + MIS</span></div>
+    <div class="bd">
+      <div class="grid" style="grid-template-columns:1fr auto; align-items:center; gap:8px">
+        <div class="sub"><b>Last MIS pack:</b> <span id="lastMis">Not generated</span> • <b>Pending to send:</b> <span id="pendingCount">5</span></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="tab" onclick="generateMISPack()">Generate</button>
+          <button class="tab" onclick="viewMIS()">View</button>
+          <button class="tab" onclick="sendToDCCB()">Send to DCCB</button>
+          <button class="tab" onclick="openTrack()">Track Review</button>
+          <button class="tab" onclick="downloadZip()">Download ZIP</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--stroke);margin:10px 0"></div>
+
+      <div class="grid" style="grid-template-columns:1.6fr .9fr .8fr 1.2fr; gap:8px; align-items:center">
+        <div class="sub">Report</div>
+        <div class="sub">Period</div>
+        <div class="sub">Status</div>
+        <div class="sub">Actions</div>
+
+        <div>Interest Subvention Statement</div>
+        <div><input class="tab" type="month" id="r_int_month" value="2025-05"/></div>
+        <div><span class="badge" id="st_int">Not generated</span></div>
+        <div style="display:flex; gap:6px"><button class="tab" onclick="generateReport('INT')">Generate</button><button class="tab" onclick="viewReport('INT')">View</button></div>
+
+        <div>Overdue Report</div>
+        <div><input class="tab" type="month" id="r_od_month" value="2025-05"/></div>
+        <div><span class="badge" id="st_od">Pending review</span></div>
+        <div style="display:flex; gap:6px"><button class="tab" onclick="generateReport('OD')">Generate</button><button class="tab" onclick="viewReport('OD')">View</button></div>
+
+        <div>Balance Sheet</div>
+        <div><select class="tab" id="r_bs_year"><option>FY 2023-24</option><option selected>FY 2024-25</option></select></div>
+        <div><span class="badge" id="st_bs">Ready</span></div>
+        <div style="display:flex; gap:6px"><button class="tab" onclick="generateReport('BS')">Rebuild</button><button class="tab" onclick="viewReport('BS')">View</button></div>
+
+        <div>Trial Balance</div>
+        <div><select class="tab" id="r_tb_month"><option>Apr 2025</option><option selected>May 2025</option></select></div>
+        <div><span class="badge" id="st_tb">Ready</span></div>
+        <div style="display:flex; gap:6px"><button class="tab" onclick="generateReport('TB')">Rebuild</button><button class="tab" onclick="viewReport('TB')">View</button></div>
+
+        <div>P&amp;L Statement</div>
+        <div><select class="tab" id="r_pnl_period"><option>Apr–Jun 2025</option><option selected>YTD 2025-26</option></select></div>
+        <div><span class="badge" id="st_pnl">Ready</span></div>
+        <div style="display:flex; gap:6px"><button class="tab" onclick="generateReport('PNL')">Rebuild</button><button class="tab" onclick="viewReport('PNL')">View</button></div>
+      </div>
+
+      <div style="height:1px;background:var(--stroke);margin:10px 0"></div>
+      <div class="sub" style="margin-bottom:6px">History</div>
+      <table id="historyTable">
+        <tr><th>Date/Time</th><th>Item</th><th>Sent to</th><th>Status</th></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Simple modal for tracking -->
+<div id="trackModal" style="position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:20px">
+  <div style="background:#fff; border-radius:12px; width:min(720px,96vw); border:1px solid var(--stroke); overflow:hidden">
+    <div class="hd">Approval Timeline</div>
+    <div id="timeline" style="padding:14px"></div>
+  </div>
+</div>
+
+<script>
+/* ===== LocalStorage helpers (shared) ===== */
+function getLS(k,def){ try{return JSON.parse(localStorage.getItem(k)) ?? def;}catch(e){return def;} }
+function setLS(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+/* ===== Notifications: render & deep-link ===== */
+function dismissNotif(id){
+  const items = getLS('pacs_notifications', []).filter(x=>x.id!==id);
+  setLS('pacs_notifications', items);
+  renderNotifPage();
+}
+function clearNotifications(){
+  setLS('pacs_notifications', []);
+  renderNotifPage();
+}
+function renderNotifPage(){
+  const list = document.getElementById('notifList');
+  const card = document.getElementById('notifCard');
+  const badge = document.getElementById('notifCount');
+  const items = getLS('pacs_notifications', []);
+
+  if(!items.length){
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  badge.textContent = items.length;
+
+  list.innerHTML = items.map(it => `
+    <div class="notif-item" id="notif-${it.id}">
+      <span class="tag">${it.tag||'Info'}</span>
+      <div style="flex:1">
+        <div class="ttl">${it.title}</div>
+        <div class="meta" style="color:var(--muted); margin-top:2px">${it.detail||''}</div>
+      </div>
+      <button class="btn-ghost" onclick="dismissNotif(${it.id})">Dismiss</button>
+    </div>
+  `).join('');
+
+  // If we came via #notif-<id>, scroll & highlight
+  if(location.hash.startsWith('#notif-')){
+    const target = document.querySelector(location.hash);
+    if(target){
+      target.classList.add('flash');
+      target.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(()=>target.classList.remove('flash'), 1600);
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', renderNotifPage);
+
+/* ===== Reporting actions (your existing logic, trimmed) ===== */
+let recipients=['dccb@bank.in'];
+let pendingToSend=5;
+function nowStr(){ return new Date().toLocaleString(); }
+function addHistory(item, to='—', status='Ready'){
+  const tbl=document.getElementById('historyTable');
+  const tr=document.createElement('tr');
+  tr.innerHTML = `<td>${nowStr()}</td><td>${item}</td><td>${to}</td><td>${status}</td>`;
+  tbl.appendChild(tr);
+}
+function generateMISPack(){
+  document.getElementById('lastMis').textContent = nowStr();
+  pendingToSend = Math.max(0, pendingToSend-1);
+  document.getElementById('pendingCount').textContent = pendingToSend;
+  addHistory('MIS Pack','—','Generated');
+  alert('MIS Pack generated (demo).');
+}
+function viewMIS(){ addHistory('MIS Pack','—','Viewed'); alert('Opening MIS pack preview (demo).'); }
+function downloadZip(){ addHistory('MIS Pack ZIP','—','Downloaded'); alert('Downloading MIS ZIP (demo).'); }
+function sendToDCCB(){ addHistory('MIS Pack', recipients.join('; '), 'Sent'); alert('MIS emailed to: '+recipients.join(', ')); }
+function viewReport(code){ const map={INT:'Interest Subvention',OD:'Overdue Report',BS:'Balance Sheet',TB:'Trial Balance',PNL:'P&L Statement'}; alert('Opening '+map[code]+' (demo)'); }
+function generateReport(code){ const idMap={INT:'st_int',OD:'st_od',BS:'st_bs',TB:'st_tb',PNL:'st_pnl'}; document.getElementById(idMap[code]).textContent='Ready'; addHistory(idMap[code].replace('st_','').toUpperCase(),'—','Generated'); }
+
+/* Tracking modal */
+function openTrack(){
+  const modal=document.getElementById('trackModal'); const tl=document.getElementById('timeline');
+  tl.innerHTML='';
+  const stages=[
+    {name:'Generated', done:true, who:'Secretary', when: nowStr()},
+    {name:'Submitted to DCCB', done:true, who:'Secretary', when: nowStr()},
+    {name:'DCB Review', done:false},
+    {name:'DCCB Review', done:false},
+    {name:'Approved', done:false}
+  ];
+  stages.forEach(s=>{
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;gap:10px;margin:10px 0;align-items:flex-start';
+    div.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;margin-top:6px; background:${s.done?'#2e7d32':'#bdbdbd'}"></div>
+      <div><b>${s.name}</b><div class="meta" style="color:var(--muted)">${s.done?('By '+s.who+' • '+s.when):'Pending'}</div></div>`;
+    tl.appendChild(div);
+  });
+  modal.style.display='flex';
+}
+document.getElementById('trackModal').addEventListener('click',e=>{ if(e.target.id==='trackModal') e.currentTarget.style.display='none'; });
+
+/* ===== CSV helper (unchanged) ===== */
+function downloadCSV(filename, rows){
+  const processRow = row => row.map(v=>`"${(v??'').toString().replace(/"/g,'""')}"`).join(',');
+  const csv = rows.map(processRow).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ===== (FYI) loan.html should store a link in each notification =====
+function addNotification({title, detail, tag='Loan'}){
+  const items = JSON.parse(localStorage.getItem('pacs_notifications')||'[]');
+  const id = Date.now();
+  const url = `reporting.html#notif-${id}`;
+  items.unshift({id, title, detail, tag, url, ts:new Date().toISOString()});
+  localStorage.setItem('pacs_notifications', JSON.stringify(items));
+}
+==================================================================== */
+</script>
+</body>
+</html>

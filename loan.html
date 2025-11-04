@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PACS Utai — Loan Profile</title>
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+<style>
+/* Heatmap: make the table fill the card */
+#heatmap table{
+  width:100%;
+  table-layout:fixed;      /* spread columns evenly */
+  border-collapse:collapse;
+  --cols:4;                /* default; JS will overwrite */
+}
+#heatmap th, #heatmap td{
+  border:1px solid var(--stroke);
+  padding:10px 12px;
+  text-align:center;
+}
+#heatmap th:first-child, #heatmap td:first-child{
+  text-align:left;
+  font-weight:800;
+}
+#heatmap col.col-name{ width:24%; }                     /* village column */
+#heatmap col.col-data{ width:calc((76%)/var(--cols)); } /* crop columns */
+
+  :root{
+    --brand:#2e7d32; --brand-25:#f5fbf6; --brand-50:#edf7ee; --brand-100:#dff1e2;
+    --text:#0f1f17; --muted:#5b6a62; --stroke:#e6e8eb; --bg:#f6fbf7; --card:#ffffff;
+    --accent:#1976d2; --warn:#ef6c00; --danger:#c62828; --amber:#ffa000; --violet:#6a4bc3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  a{color:inherit; text-decoration:none}
+
+  /* App bar */
+  .appbar{position:sticky; top:0; z-index:50; color:#fff;
+    background:linear-gradient(100deg,#184d1c, #2e7d32 60%, #43a047)}
+  .appbar .row{display:flex; align-items:center; gap:12px; padding:12px 16px}
+  .logo{height:40px; width:40px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .logo img{width:100%; height:100%; object-fit:contain}
+  .ttl{font-weight:900; letter-spacing:.2px}
+  .meta{opacity:.9; font-size:12px}
+  .grow{flex:1}
+  .nav{display:flex; gap:8px; flex-wrap:wrap}
+  .nav a{background:#ffffff1a; padding:8px 12px; border-radius:999px; border:1px solid #ffffff33; font-weight:700}
+  .nav a.active{background:#fff; color:#145a2a}
+  .icons{display:flex; gap:6px; align-items:center}
+  .iconbtn{
+    position:relative; height:36px; width:36px; border-radius:10px;
+    border:1px solid #ffffff33; background:#ffffff22; display:grid; place-items:center; cursor:pointer;
+  }
+  .badge{position:absolute; top:-6px; right:-6px; background:#ffeb3b; color:#145a2a; border-radius:999px; font-size:10px; padding:1px 5px; font-weight:800}
+
+  /* Notification tray (floating) */
+  .tray{
+    position:fixed; top:64px; right:16px; width:min(420px,95vw);
+    background:#fff; color:var(--text); border:1px solid var(--stroke);
+    border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.15); display:none; z-index:80;
+  }
+  .tray .hd{padding:10px 12px; border-bottom:1px solid var(--stroke); font-weight:800; color:#145a2a; display:flex; justify-content:space-between; align-items:center}
+  .tray .item{padding:10px 12px; border-bottom:1px dashed var(--stroke); display:flex; gap:8px; align-items:flex-start}
+  .tray .item:last-child{border-bottom:none}
+  .tray .tag{font-size:11px; background:var(--brand-100); color:#145a2a; padding:2px 8px; border-radius:999px; border:1px solid var(--stroke)}
+  .tray .close{margin-left:auto; cursor:pointer; color:#9aa8a1}
+
+  /* Layout */
+  .wrap{padding:18px}
+  .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:14px}
+  @media (max-width:1200px){ .grid{grid-template-columns:repeat(8,1fr)} }
+  @media (max-width:900px){ .grid{grid-template-columns:repeat(6,1fr)} }
+  @media (max-width:768px){ .grid{grid-template-columns:repeat(1,1fr)} }
+  .span-12{grid-column:span 12} .span-8{grid-column:span 8} .span-6{grid-column:span 6} .span-4{grid-column:span 4}
+
+  /* Cards */
+  .card{
+    background:var(--card); border:1px solid var(--stroke); border-radius:16px;
+    box-shadow:0 4px 10px rgba(0,0,0,.05); overflow:hidden; display:flex; flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .card:hover{transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,.07)}
+  .hd{padding:12px 14px; border-bottom:1px solid var(--stroke); color:#145a2a; font-weight:900; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--brand-50)}
+  .sub{font-weight:700; color:#374151; font-size:12px}
+  .bd{padding:12px 14px; position:relative}
+  .chart-wrap{width:100%; height:270px; position:relative}
+  canvas{max-width:100% !important; max-height:100% !important}
+  .pill{font-size:12px; padding:2px 8px; border:1px solid var(--stroke); border-radius:999px; background:var(--brand-25); color:#145a2a}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .btn{background:var(--brand); color:#fff; border:none; padding:10px 14px; border-radius:11px; font-weight:800; cursor:pointer}
+  .btn-ghost{background:#fff; color:#145a2a; border:1px solid var(--stroke); padding:10px 14px; border-radius:11px; font-weight:800; cursor:pointer}
+  .btn-red{background:var(--danger); color:#fff; border:none; padding:10px 14px; border-radius:11px; font-weight:800; cursor:pointer}
+  .hint{font-size:12px; color:var(--muted)}
+  .insights{font-size:14px; color:#334155; line-height:1.55}
+  .insights b{color:#145a2a}
+  .seg{display:flex; gap:6px; background:var(--brand-50); padding:6px; border-radius:999px; border:1px solid var(--stroke)}
+  .seg button{border:none; background:#fff; color:#145a2a; padding:8px 12px; border-radius:999px; cursor:pointer; font-weight:800}
+  .seg button.active{background:#145a2a; color:#fff}
+  .download{position:absolute; top:6px; right:6px; background:#fff; border:1px solid var(--stroke); height:34px; width:34px; border-radius:8px; display:grid; place-items:center; cursor:pointer}
+
+  /* Metric tiles (Row-1 metric strip) */
+  .strip{display:grid; grid-template-columns:repeat(6,1fr); gap:12px}
+  @media (max-width:1100px){ .strip{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:680px){ .strip{grid-template-columns:repeat(2,1fr)} }
+  .tile{position:relative}
+  .face{background:#fff; border:1px solid var(--stroke); border-radius:14px; padding:12px; display:flex; gap:8px; align-items:center; justify-content:space-between; height:102px}
+  .kv{display:flex; flex-direction:column}
+  .kv .label{font-size:12px; color:#536267}
+  .kv .value{font-size:22px; font-weight:900; color:#145a2a}
+  .delta{font-size:12px; font-weight:900}
+  .delta.pos{color:#1b5e20} .delta.neg{color:#c62828}
+
+  /* Tiny toast */
+  .toast{position:fixed; right:16px; bottom:16px; background:#145a2a; color:#fff; padding:10px 14px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.2); display:none; z-index:60}
+</style>
+</head>
+<body>
+
+<!-- App bar -->
+<div class="appbar">
+  <div class="row">
+    <a class="logo" href="index.html" title="Go to Snapshot">
+      <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt=""/>
+    </a>
+    <div>
+      <div class="ttl">PACS Surgi — Loan Profile</div>
+      <div class="meta">Durg, Chhattisgarh • Established 1957</div>
+    </div>
+    <div class="grow"></div>
+    <nav class="nav">
+      <a href="index.html">🏠 Snapshot</a>
+      <a href="pacs.html">🏛️ PACS</a>
+      <a href="membership.html">👥 Membership</a>
+      <a href="loan.html" class="active">💳 Loan</a>
+      <a href="noncredit.html">🛒 Non-credit</a>
+      <a href="reporting.html">📤 Reporting</a>
+    </nav>
+    <div class="icons" style="position:relative">
+      <div class="iconbtn" id="bellBtn" title="Notifications" onclick="toggleTray()">
+        🔔 <span id="bellBadge" class="badge" style="display:none"></span>
+      </div>
+      <div class="iconbtn" title="Logout" onclick="logout()">⎋</div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification tray -->
+<div id="tray" class="tray" role="dialog" aria-live="polite">
+  <div class="hd">
+    <span>Notifications</span>
+    <button class="btn-ghost" onclick="clearNotifications()">Clear all</button>
+  </div>
+  <div id="trayItems"></div>
+  <div style="padding:10px 12px; font-size:12px; color:#5b6a62">Tip: tasks you create here are saved for the upcoming <b>Tasks</b> page.</div>
+</div>
+
+<!-- Page -->
+<div class="wrap">
+
+  <!-- Row 1: metric strip -->
+  <div class="strip">
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Total Outstanding</div><div class="value" id="m_out"></div></div>
+      </div>
+    </div>
+
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Total Disbursed (YTD)</div><div class="value" id="m_disb"></div></div>
+      </div>
+    </div>
+
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">NPA %</div><div class="value" id="m_npa"></div></div>
+      </div>
+    </div>
+
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Upcoming dues (≤15d)</div><div class="value" id="m_up15"></div></div>
+      </div>
+    </div>
+
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">Avg Loan Size (₹)</div><div class="value" id="m_avg"></div></div>
+      </div>
+    </div>
+
+    <div class="tile">
+      <div class="face">
+        <div class="kv"><div class="label">On-time Repayment %</div><div class="value" id="m_ontime"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Credit penetration -->
+  <div class="grid" style="margin-top:14px">
+    <div class="card span-8">
+      <div class="hd">
+        <span>Credit Penetration — Borrowers vs Non-borrowers</span>
+        <div class="seg">
+          <button class="active" data-v="overall" onclick="switchPen('overall',this)">Overall</button>
+          <button data-v="village" onclick="switchPen('village',this)">By village</button>
+          <button data-v="land" onclick="switchPen('land',this)">By landholding</button>
+          <button data-v="crop" onclick="switchPen('crop',this)">By crops</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="penChart"></canvas></div>
+        <button class="download" title="Download data" onclick="downloadPenetration()">⬇️</button>
+        <div class="insights" id="penInsights" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="card span-4">
+      <div class="hd">Insights & Actions <span class="pill">AI-styled notes</span></div>
+      <div class="bd">
+        <div id="actionNotes" class="insights" style="margin-bottom:10px">
+          • Use “By village” to spot pockets of non-borrowers. Click the buttons below to raise tasks or download reports for internal discussions.
+        </div>
+        <div class="toolbar">
+          <button class="btn" onclick="taskOutreach()">Send SMS/WhatsApp to non-borrowers</button>
+          <button class="btn-ghost" onclick="taskTagCycle()">Non- borrower list for PACS</button>
+          <button class="btn-ghost" onclick="taskBorrowingMIS()">Borrower list for DCCBs for cross selling</button>
+          <button class="btn-ghost" onclick="downloadPenZip()">Download reports</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Portfolio & Insurance -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Loan Portfolio Split <span class="sub">KCC vs MT/LT</span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="portChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadPortfolio()">Download split</button>
+<div class="callout">
+  ℹ️ <span><b>Note:</b> MT/LT are medium/long-term loans given by the <b>DCCBs</b>.</span>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">KCC — Season Split <span class="sub">Kharif vs Rabi</span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="seasonChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadSeason()">Download season data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">
+        Insurance Coverage <span class="pill">Target ≥80%</span>
+        <div class="seg">
+          <button class="active" data-v="crop" onclick="switchIns('crop',this)">By crop</button>
+          <button data-v="village" onclick="switchIns('village',this)">By village</button>
+          <button data-v="size" onclick="switchIns('size',this)">By loan size</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="insChart"></canvas></div>
+        <div id="insInsights" class="insights" style="margin-top:8px"></div>
+        <div class="toolbar">
+          <button class="btn" onclick="taskUninsured()">Generate uninsured list</button>
+          <button class="btn" onclick="taskInsReminders()">Send reminders</button>
+          <button class="btn-ghost" onclick="taskInsAlert()">Set alert &lt;80%</button>
+          <button class="btn-ghost" onclick="downloadUninsured()">Download uninsured</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">KCC — Ticket Size Buckets</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="bucketChart"></canvas></div>
+        <table id="bucketTbl">
+          <tr><th>Bucket</th><th>Loans</th><th>Amount (₹L)</th></tr>
+        </table>
+        <div class="toolbar">
+          <button class="btn" onclick="downloadHighTickets()">Download members ≥2L</button>
+          <button class="btn-ghost" onclick="taskOfferMTLT()">Raise task: MTLT offers</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">
+        Concentration Risk <span class="sub">Crop / Village</span>
+        <div class="seg">
+          <button class="active" data-v="crop" onclick="switchConc('crop',this)">Crop</button>
+          <button data-v="village" onclick="switchConc('village',this)">Village</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="concChart"></canvas></div>
+        
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadConcentration()">Download member list</button>
+          <button class="btn" onclick="taskConcAlert()">Set alert</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">KCC End-use Split</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="enduseChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadEnduse()">Download end-use</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 4: Seasonal repayment cohorts -->
+  <div class="grid">
+    <div class="card span-8">
+      <div class="hd">Repayment Performance by Season-Year Cohort</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="cohortChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn" onclick="taskDiagnose()">Diagnose drivers</button>
+          <button class="btn" onclick="taskRiskAlerts()">Set risk alerts for next season</button>
+          <button class="btn-ghost" onclick="taskBenchmark()">Benchmark peer PACS</button>
+        </div>
+      </div>
+    </div>
+    <div class="card span-4">
+      <div class="hd">Scenario Planning <span class="sub">Apply last season’s pattern</span></div>
+      <div class="bd">
+        <div class="insights">
+          Today’s Kharif disbursement: <b id="sc_today">₹—</b><br/>
+          If this season behaves like <b>Kharif 2022</b>: expected overdue by harvest ≈ <b id="sc_over">—</b>.
+        </div>
+        <div class="toolbar">
+          <button class="btn" onclick="applyScenario()">Apply scenario</button>
+          <button class="btn-ghost" onclick="taskScenario()">Raise task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 5: DPD & Upcoming -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Overdue — DPD Buckets</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="dpdChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn" onclick="taskCollections()">Focus collections (&gt;30d)</button>
+          <button class="btn-red" onclick="taskEscalate()">Escalate &gt;90d</button>
+          <button class="btn-ghost" onclick="downloadDPD()">Download overdue</button>
+        </div>
+      </div>
+    </div>
+    <div class="card span-6">
+      <div class="hd">Repayment — Upcoming vs Due (This month)</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="dueChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn" onclick="taskReminders()">Send reminders</button>
+          <button class="btn-ghost" onclick="downloadDue()">Download due list</button>
+          <button class="btn-ghost" onclick="taskVisits()">Plan visits</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 6: Credit Absorption & Utilization -->
+  <div class="card span-12" style="margin-top:14px">
+    <div class="hd">Credit Absorption & Utilization <span class="sub">Coverage % = Disbursed ÷ (SoF × Crop area)</span></div>
+    <div class="bd">
+      <div id="heatmap" class="insights" style="overflow:auto"></div>
+      <div class="toolbar">
+        <button class="btn" onclick="taskMobilize()">Initiate mobilization</button>
+        <button class="btn-ghost" onclick="taskFlagData()">Flag data issue</button>
+        <button class="btn-ghost" onclick="taskTopup()">Top-up recommendation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 7: Peer benchmarking -->
+  <div class="grid" style="margin-top:14px">
+    <div class="card span-12">
+      <div class="hd">Peer Benchmarking — Key KPIs</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="peerChart"></canvas></div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadPeer()">Download peer report</button>
+          <button class="btn" onclick="taskPeerAlert()">Alert if below peer avg</button>
+          <button class="btn-ghost" onclick="taskMemberImpact()">Check member impact</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* =============== Helpers =============== */
+const r2 = n => (Math.round((+n + Number.EPSILON) * 100) / 100);
+const r2s = n => r2(n).toFixed(2);
+const fmtL  = n => '₹' + r2(n/100000).toLocaleString('en-IN') + ' L';
+const fmtCr = n => '₹' + r2(n/10000000).toLocaleString('en-IN') + ' Cr';
+
+const byId = id => document.getElementById(id);
+const ctx = id => {
+  const el = byId(id);
+  if(!el){ console.warn('Canvas not found:', id); return null; }
+  const c = el.getContext('2d');
+  if(!c){ console.warn('2D context not available for:', id); }
+  return c;
+};
+
+/* Chart.js defaults */
+Chart.defaults.font.family = 'Inter,Arial,system-ui';
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.padding = 10;
+
+/* value labels plugin */
+const valueLabelPlugin = {
+  id:'valabel',
+  afterDatasetsDraw(chart){
+    const {ctx} = chart; ctx.save();
+    chart.data.datasets.forEach((ds,dsi)=>{
+      const meta = chart.getDatasetMeta(dsi);
+      (meta?.data||[]).forEach((el,i)=>{
+        const v = ds.data[i];
+        if(v==null || isNaN(v)) return;
+        const {x,y} = el.tooltipPosition();
+        ctx.fillStyle = '#374151'; ctx.font='12px Inter,Arial'; ctx.textAlign='center';
+        ctx.fillText(r2(v), x, y-6);
+      });
+    });
+    ctx.restore();
+  }
+};
+const roundedTooltips = { plugins:{ tooltip:{ callbacks:{ label:c => `${c.dataset.label}: ${r2(c.raw)}` } }, legend:{position:'top'} }, responsive:true, maintainAspectRatio:false };
+
+/* =============== Demo Data =============== */
+const villages = ['Utai','Dhaba','Surgi','Somni','Karanja Bhillai'];
+const totalMembers = 2819, borrowers = 1264, nonBorrowers = totalMembers - borrowers;
+const borByVillage = [1405, 1600, 1264, 2497, 883];
+const nborByVillage = [6212, 798, 1579, 3045, 1004];
+
+const landholdBuckets = ['Marginal(<1 hectare)','Small(1-2 hectare)','Semi-Medium(2-4 hectare)','Medium(4-10 hectare)','Large(>=10 hectare)'];
+const borByLand = [1381, 119, 30, 3,1];
+const nborByLand = [737, 15, 5, 0,0];
+
+const cropNames = ['Paddy','Wheat','Maize','Pulses','Vegetables'];
+const borByCrop = [1264, 0, 0, 0, 0];
+const nborByCrop = [0, 0, 0, 0, 0];
+
+const metrics = {
+  outstanding: 30948063, outstanding_ly: 0,
+  disbursedYTD: 71319708, disbursedYTD_ly: 68030807,
+  npa: 1.84, npa_ly: 0,
+  up15: 9291, up15_ly: 0,
+  avgLoan: 168116, avgLoan_ly: 77761,
+  ontime: 97, ontime_ly: 0
+};
+
+const portfolio = { labels:['KCC','MT/LT'], amounts:[71319708, 0] };
+const season    = { labels:['Kharif','Rabi'], amounts:[71319708, 0] };
+const buckets   = { labels:['<50k','50k–1L','1–2L','2–3L','3L+'], loans:[40, 116, 116, 56, 60], amountL:[14, 83, 161, 145, 271] };
+
+const insurance = {
+  crop:{ labels:cropNames, coverage:[0, 0, 0, 0, 0] },
+  village:{ labels:villages, coverage:[0,0,0,0,0] },
+  size:{ labels:buckets.labels, coverage:[0,0,0,0,0] }
+};
+
+const enduse = { labels:['Agri','Dairy','Fisheries','Animal Husbandry','Others'], amounts:[100,0,0,0,0] };
+const concentration = { cropPct:[0,0,0,0,0], villagePct:[28,22,18,17,15] };
+const cohorts = { labels:['Kharif 2021','Rabi 2022','Kharif 2022','Rabi 2023','Kharif 2023'], ontime:[0,0,0,0,0], delayed:[0,0,0,0,0], defaulted:[0,0,0,0,0] };
+
+const dpd = {
+  buckets:['1–30','31–90','>90'],
+  byCrop:{ 'Paddy':[5,5,25], 'Wheat':[0,0,0], 'Others':[0,0,0] }
+};
+const dueThisMonth = {
+  bySize:['≤25k','25–75k','75k–1.5L','>1.5L'],
+  bySizeUpcoming:[36577,0,0,0],
+  bySizeDue:[9291,0,0,0]
+};
+const heatmapData = {
+  villages, crops:['Paddy','Wheat','Maize','Pulses'],
+  coverage:[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
+};
+const peers = {
+  labels:['Utai','Dhaba','Surgi','Somni','Karanja'],
+  avgLoan:[255, 71, 179, 100, 123], // ₹k
+  penetration:[7,66,43,45,46],
+  ontime:[81,36,97,94,88]
+};
+
+/* ========== Notifications/Tasks & CSV helpers ========== */
+function logout(){ localStorage.removeItem('pacs_auth'); window.location.href = './index.html'; }
+function getLS(k,def){ try{return JSON.parse(localStorage.getItem(k)) ?? def;}catch(e){return def;} }
+function setLS(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+function addNotification({title, detail, tag='Loan'}){
+  const items = getLS('pacs_notifications', []);
+  items.unshift({id:Date.now(), title, detail, tag, ts:new Date().toISOString()});
+  setLS('pacs_notifications', items); renderTray(); toast('✔ ' + title);
+}
+function addTask(title, detail, tag='Loan'){
+  const tasks = getLS('pacs_tasks', []); tasks.unshift({id:Date.now(), title, detail, tag, status:'Open', ts:new Date().toISOString()});
+  setLS('pacs_tasks', tasks); addNotification({title:`Task raised — ${title}`, detail, tag});
+}
+function renderTray(){
+  const items = getLS('pacs_notifications', []);
+  const box = byId('trayItems'); box.innerHTML = '';
+  const badge = byId('bellBadge'); badge.style.display = items.length ? 'inline-block' : 'none'; badge.textContent = items.length;
+  if(!items.length){ box.innerHTML = '<div class="item"><span class="tag">Info</span><div>No notifications.</div></div>'; return; }
+  items.forEach(it=>{
+    const div = document.createElement('div'); div.className='item';
+    div.innerHTML = `<span class="tag">${it.tag}</span>
+      <div><b>${it.title}</b><div class="hint">${it.detail}</div></div>
+      <span class="close" title="Dismiss" onclick="dismissNotif(${it.id})">✕</span>`;
+    box.appendChild(div);
+  });
+}
+function dismissNotif(id){ const items = getLS('pacs_notifications', []).filter(x=>x.id!==id); setLS('pacs_notifications', items); renderTray(); }
+function clearNotifications(){ setLS('pacs_notifications', []); renderTray(); }
+function toggleTray(){ const t = byId('tray'); t.style.display = (t.style.display==='block'?'none':'block'); }
+function toast(msg){ const t = byId('toast'); t.textContent = msg; t.style.display='block'; setTimeout(()=>t.style.display='none', 1600); }
+
+function downloadCSV(filename, rows){
+  const processRow = row => row.map(v=>`"${(v??'').toString().replace(/"/g,'""')}"`).join(',');
+  const csv = rows.map(processRow).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ===== Buttons: actions (all stubs implemented) ===== */
+function taskOutreach(){ addTask('Outreach: Non-borrowers SMS/WhatsApp', `Send vernacular SMS + WhatsApp to ${totalMembers-borrowers} non-borrowers across ${villages.length} villages.`, 'Outreach'); }
+function taskTagCycle(){ addTask('Tag prospects for next crop cycle', 'Prepare village-wise list for field staff.', 'Planning'); }
+function taskBorrowingMIS(){
+  const rows = [['Village','Borrowers','Non-borrowers']];
+  villages.forEach((v,i)=> rows.push([v, borByVillage[i], nborByVillage[i]]));
+  downloadCSV('borrowing_mis_by_village.csv', rows);
+  addTask('Prepare Borrowing MIS & send to DCCB', 'Compile penetration MIS (all views) and email to DCCB with gaps & outreach plan.', 'Reporting');
+}
+function downloadPenZip(){
+  const rows1=[['View','Label','Borrowers','Non-borrowers']];
+  rows1.push(['Overall','PACS',borrowers,nonBorrowers]);
+  villages.forEach((v,i)=>rows1.push(['Village',v,borByVillage[i],nborByVillage[i]]));
+  landholdBuckets.forEach((b,i)=>rows1.push(['Land',b,borByLand[i],nborByLand[i]]));
+  cropNames.forEach((c,i)=>rows1.push(['Crop',c,borByCrop[i],nborByCrop[i]]));
+  downloadCSV('credit_penetration_all_views.csv', rows1);
+
+  const rows2=[['Metric','This year','Last year']];
+  rows2.push(['Outstanding (₹Cr)', r2(metrics.outstanding/1e7), r2(metrics.outstanding_ly/1e7)]);
+  rows2.push(['Disbursed YTD (₹Cr)', r2(metrics.disbursedYTD/1e7), r2(metrics.disbursedYTD_ly/1e7)]);
+  rows2.push(['NPA %', metrics.npa, metrics.npa_ly]);
+  rows2.push(['Avg loan (₹)', metrics.avgLoan, metrics.avgLoan_ly]);
+  downloadCSV('loan_metrics_snapshot.csv', rows2);
+
+  addNotification({title:'Report bundle prepared', detail:'Downloaded penetration + metrics CSVs.', tag:'Reporting'});
+}
+function downloadPenetration(){
+  const rows=[['View','Label','Borrowers','Non-borrowers']];
+  rows.push(['Overall','PACS',borrowers,nonBorrowers]);
+  villages.forEach((v,i)=>rows.push(['Village',v,borByVillage[i],nborByVillage[i]]));
+  landholdBuckets.forEach((b,i)=>rows.push(['Land',b,borByLand[i],nborByLand[i]]));
+  cropNames.forEach((c,i)=>rows.push(['Crop',c,borByCrop[i],nborByCrop[i]]));
+  downloadCSV('credit_penetration.csv', rows);
+}
+function downloadPortfolio(){ downloadCSV('portfolio_split.csv', [['Type','Amount (₹L)'], ...portfolio.labels.map((l,i)=>[l, r2(portfolio.amounts[i]/1e5)])]); }
+function downloadSeason(){ downloadCSV('season_split.csv', [['Season','Amount (₹L)'], ...season.labels.map((l,i)=>[l, r2(season.amounts[i]/1e5)])]); }
+function taskUninsured(){ addTask('Generate uninsured list', 'List members with coverage < 80% target, segmented by selected view.', 'Insurance'); }
+function taskInsReminders(){ addTask('Send Insurance reminders', 'Send SMS/WhatsApp to members without/low coverage.', 'Insurance'); }
+function taskInsAlert(){ addTask('Create alert: Insurance < 80%', 'Notify when coverage for any segment falls below 80%.', 'Insurance'); }
+function downloadUninsured(){ downloadCSV('uninsured_dummy.csv', [['MemberID','Name','Village','Coverage%'], ['U001','R. Verma','Utai',65]]); }
+function downloadHighTickets(){ downloadCSV('members_2L_plus_dummy.csv', [['MemberID','Name','Ticket (₹L)'], ['H001','S. Patel', 2.4]]); }
+function taskOfferMTLT(){ addTask('Raise task: Offer MT/LT loans', 'Prospects from ≥2L KCC bucket for MTLT cross-sell.', 'Cross-sell'); }
+function downloadConcentration(){ downloadCSV('concentration_members_dummy.csv', [['MemberID','Crop/Village','Share%'], ['M001','Paddy',28]]); }
+function taskConcAlert(){ addTask('Create alert: Concentration > 25%', 'Notify when any crop/village >25% share.', 'Risk'); }
+function downloadEnduse(){ downloadCSV('enduse_split.csv', [['End-use','% share'], ...enduse.labels.map((l,i)=>[l, enduse.amounts[i]])]); }
+function taskDiagnose(){ addTask('Diagnose repayment drivers', 'Deep-dive into cohort underperformance.', 'Repayment'); }
+function taskRiskAlerts(){ addTask('Set risk alerts for next season', 'Auto-alerts on early slippage signals.', 'Repayment'); }
+function taskBenchmark(){ addTask('Benchmark peer PACS', 'Compare KPIs vs nearby PACS.', 'Benchmark'); }
+function applyScenario(){ const overdue = 0.27 * 6500000; byId('sc_today').textContent = fmtL(6500000); byId('sc_over').textContent = fmtL(overdue); toast('Scenario applied'); }
+function taskScenario(){ addTask('Scenario planning', 'Apply last season pattern to current disbursement.', 'Planning'); }
+function taskCollections(){ addTask('Collections focus (>30d)', 'Prioritise >30d bucket for follow-ups.', 'Collections'); }
+function taskEscalate(){ addTask('Escalate >90d', 'Prepare legal/escalation cases.', 'Collections'); }
+function downloadDPD(){ downloadCSV('dpd_by_crop.csv', [['Bucket','Paddy (₹L)','Wheat (₹L)','Others (₹L)'], ...dpd.buckets.map((b,i)=>[b, dpd.byCrop.Paddy[i], dpd.byCrop.Wheat[i], dpd.byCrop.Others[i]])]); }
+function taskReminders(){ addTask('Send repayment reminders', 'Automated SMS/WhatsApp for dues this month.', 'Repayment'); }
+function downloadDue(){ downloadCSV('due_this_month.csv', [['Size','Upcoming (₹L)','Due (₹L)'], ...dueThisMonth.bySize.map((s,i)=>[s, dueThisMonth.bySizeUpcoming[i], dueThisMonth.bySizeDue[i]])]); }
+function taskVisits(){ addTask('Plan field visits', 'Route plan for this month’s dues.', 'Repayment'); }
+function downloadPeer(){ downloadCSV('peer_kpis.csv', [['PACS','Avg Loan (₹k)','Penetration %','On-time %'], ...peers.labels.map((l,i)=>[l, peers.avgLoan[i], r2(peers.penetration[i]), r2(peers.ontime[i])])]); }
+function taskPeerAlert(){ addTask('Alert if below peer avg', 'Notify when any KPI dips below peer average.', 'Benchmark'); }
+function taskMemberImpact(){ addTask('Check member impact', 'Simulate policy change vs member outcomes.', 'Analysis'); }
+
+/* =============== Row 1: Metrics =============== */
+function renderStrip(){
+  const set = (id, v) => byId(id).textContent = v;
+
+  set('m_out', fmtCr(metrics.outstanding));
+  set('m_disb', fmtCr(metrics.disbursedYTD));
+  set('m_npa', r2s(metrics.npa)+'%');
+  set('m_up15', fmtL(metrics.up15));
+  set('m_avg', '₹' + r2(metrics.avgLoan).toLocaleString('en-IN'));
+  set('m_ontime', r2s(metrics.ontime)+'%');
+}
+
+/* =============== Row 2: Penetration =============== */
+let penChart;
+function penConfig(view){
+  if(view==='overall'){
+    return { labels:['PACS overall'],
+      datasets:[{label:'Borrowers', data:[borrowers], backgroundColor:'#2e7d32'},
+                {label:'Non-borrowers', data:[nonBorrowers], backgroundColor:'#c62828'}] }
+  }
+  if(view==='village'){
+    return { labels:villages,
+      datasets:[{label:'Borrowers', data:borByVillage, backgroundColor:'#2e7d32'},
+                {label:'Non-borrowers', data:nborByVillage, backgroundColor:'#c62828'}] }
+  }
+  if(view==='land'){
+    return { labels:landholdBuckets,
+      datasets:[{label:'Borrowers', data:borByLand, backgroundColor:'#2e7d32'},
+                {label:'Non-borrowers', data:nborByLand, backgroundColor:'#c62828'}] }
+  }
+  return { labels:cropNames,
+    datasets:[{label:'Borrowers', data:borByCrop, backgroundColor:'#2e7d32'},
+              {label:'Non-borrowers', data:nborByCrop, backgroundColor:'#c62828'}] }
+}
+function switchPen(view, btn){
+  if(btn && btn.parentElement){ btn.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); }
+  if(penChart) penChart.destroy();
+  const c = ctx('penChart'); if(!c) return;
+  penChart = new Chart(c,{ type:'bar', data: penConfig(view), options:{...roundedTooltips, scales:{y:{beginAtZero:true}}}, plugins:[valueLabelPlugin] });
+
+  const worstVillageIdx = nborByVillage.indexOf(Math.max(...nborByVillage));
+  byId('penInsights').innerHTML =
+    `• Borrowers: <b>${borrowers}</b> of <b>${totalMembers}</b>. Conversion potential: <b>${nonBorrowers}</b>.<br>
+     • Highest non-borrower pocket: <b>${villages[worstVillageIdx]}</b> — target home visits + vernacular SMS.<br>
+     • Land lens: focus <b>2–4 acres</b>; add <b>SoF-based</b> top-ups for 4–6 acres.<br>
+     • Crop lens: <b>Paddy</b> dominant; upsell input credit to <b>Wheat</b> growers post-harvest.`;
+}
+
+/* =============== Row 3: Portfolio, Season, Insurance, Buckets, End-use =============== */
+function buildPortfolio(){
+  const c = ctx('portChart'); if(!c) return;
+  new Chart(c,{ type:'doughnut', data:{labels:portfolio.labels, datasets:[{data:portfolio.amounts.map(x=>r2(x/1e5)), backgroundColor:['#2e7d32','#1976d2','#6a4bc3']}]}, options:{...roundedTooltips, plugins:{legend:{position:'right'}}} });
+}
+function buildSeason(){
+  const c = ctx('seasonChart'); if(!c) return;
+  new Chart(c,{ type:'bar', data:{labels:season.labels, datasets:[{label:'Disbursed (₹L)', data:season.amounts.map(x=>r2(x/1e5)), backgroundColor:'#ffb300'}]}, options:{...roundedTooltips, scales:{y:{beginAtZero:true, title:{display:true,text:'₹ L'}}}} });
+}
+let insChart, insView='crop';
+function switchIns(v, btn){ if(btn && btn.parentElement){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); } insView=v; renderIns(); }
+function renderIns(){
+  const c = ctx('insChart'); if(!c) return;
+  if(insChart) insChart.destroy();
+  const {labels, coverage} = insurance[insView];
+  insChart = new Chart(c,{
+    type:'bar',
+    data:{labels, datasets:[{label:'Coverage %', data:coverage, backgroundColor:coverage.map(x=> x>=90?'#2e7d32':(x>=80?'#ffb300':'#c62828'))}]},
+    options:{...roundedTooltips, scales:{y:{beginAtZero:true,max:100, ticks:{callback:v=>v+'%'}}}},
+    plugins:[valueLabelPlugin]
+  });
+  const low = labels.map((l,i)=>({l, v:coverage[i]})).sort((a,b)=>a.v-b.v)[0];
+  byId('insInsights').innerHTML = `• Lowest coverage: <b>${low.l}</b> at <b>${low.v}%</b>. Target camps & reminders.<br>• Overall average ≈ ${r2s(coverage.reduce((a,b)=>a+b,0)/coverage.length)}%.`;
+}
+function buildBuckets(){
+  const c = ctx('bucketChart'); if(!c) return;
+  new Chart(c,{ type:'bar',
+    data:{labels:buckets.labels, datasets:[
+      {label:'Loans (count)', data:buckets.loans, backgroundColor:'#1976d2'},
+      {label:'Amount (₹L)', data:buckets.amountL, backgroundColor:'#43a047', yAxisID:'y1'}
+    ]},
+    options:{...roundedTooltips, scales:{y:{beginAtZero:true, title:{display:true,text:'Count'}}, y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, title:{display:true,text:'₹ L'}}}}
+  });
+
+  // Fill table
+  const tbl = byId('bucketTbl');
+  while (tbl.rows.length > 1) tbl.deleteRow(1);
+  buckets.labels.forEach((b,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${b}</td><td>${buckets.loans[i]}</td><td>${r2s(buckets.amountL[i])}</td>`;
+    tbl.appendChild(tr);
+  });
+}
+function buildEnduse(){
+  const c = ctx('enduseChart'); if(!c) return;
+  new Chart(c,{
+    type:'bar',
+       data:{labels:enduse.labels, datasets:[{label:'% share', data:enduse.amounts, backgroundColor:['#2e7d32','#1976d2','#6a4bc3','#009688','#ffb300']}]},
+    options:{...roundedTooltips, scales:{y:{beginAtZero:true, max:100, ticks:{callback:v=>v+'%'}}}},
+    plugins:[valueLabelPlugin]
+  });
+}
+
+/* =============== Row 4: Cohorts =============== */
+function buildCohorts(){
+  const c = ctx('cohortChart'); if(!c) return;
+  new Chart(c,{
+    type:'bar',
+    data:{labels:cohorts.labels, datasets:[
+      {label:'On-time %', data:cohorts.ontime, backgroundColor:'#2e7d32'},
+      {label:'Delayed %', data:cohorts.delayed, backgroundColor:'#ffb300'},
+      {label:'Defaulted %', data:cohorts.defaulted, backgroundColor:'#c62828'}
+    ]},
+    options:{...roundedTooltips, scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}},
+    plugins:[valueLabelPlugin]
+  });
+}
+
+/* =============== Row 5: DPD & Due =============== */
+function buildDPD(){
+  const c = ctx('dpdChart'); if(!c) return;
+  new Chart(c,{
+    type:'bar',
+    data:{labels:dpd.buckets, datasets:[
+      {label:'Paddy (₹L)', data:dpd.byCrop.Paddy, backgroundColor:'#2e7d32'},
+      {label:'Wheat (₹L)', data:dpd.byCrop.Wheat, backgroundColor:'#1976d2'},
+      {label:'Others (₹L)', data:dpd.byCrop.Others, backgroundColor:'#6a4bc3'}
+    ]},
+    options:{...roundedTooltips, scales:{y:{beginAtZero:true,title:{display:true,text:'₹ L'}}}},
+    plugins:[valueLabelPlugin]
+  });
+}
+function buildDue(){
+  const c = ctx('dueChart'); if(!c) return;
+  new Chart(c,{
+    type:'bar',
+    data:{labels:dueThisMonth.bySize, datasets:[
+      {label:'Upcoming ≤15d (₹L)', data:dueThisMonth.bySizeUpcoming, backgroundColor:'#ffb300'},
+      {label:'Due this month (₹L)', data:dueThisMonth.bySizeDue, backgroundColor:'#2e7d32'}
+    ]},
+    options:{...roundedTooltips, scales:{y:{beginAtZero:true,title:{display:true,text:'₹ L'}}}},
+    plugins:[valueLabelPlugin]
+  });
+}
+
+/* =============== Row 6: Heatmap =============== */
+function buildHeatmap(){
+  const tbl = document.createElement('table');
+
+  // Let CSS know how many crop columns there are
+  tbl.style.setProperty('--cols', heatmapData.crops.length);
+
+  // Explicit column widths (first wide, rest evenly split)
+  const colgroup = document.createElement('colgroup');
+  colgroup.innerHTML = `<col class="col-name">` +
+    heatmapData.crops.map(()=>`<col class="col-data">`).join('');
+  tbl.appendChild(colgroup);
+
+  // Header
+  const thead = document.createElement('thead');
+  const head = document.createElement('tr');
+  head.innerHTML = `<th>Village \\ Crop</th>${heatmapData.crops.map(c=>`<th>${c}</th>`).join('')}`;
+  thead.appendChild(head);
+  tbl.appendChild(thead);
+
+  // Body
+  const tbody = document.createElement('tbody');
+  heatmapData.coverage.forEach((row, ri) => {
+    const tr = document.createElement('tr');
+    const first = `<td>${villages[ri]}</td>`;
+    const rest = row.map(v => {
+      const color = v < 40 ? '#ffebee' : v < 70 ? '#fff8e1' : '#e8f5e9';
+      return `<td style="background:${color}">${r2s(v)}%</td>`;
+    }).join('');
+    tr.innerHTML = first + rest;
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+
+  // Mount (and clear any previous render)
+  const host = byId('heatmap');
+  host.innerHTML = '';
+  host.appendChild(tbl);
+}/* =============== Row 3b: Concentration Risk =============== */
+let concChart, concView='crop';
+function renderConc(){
+  if (concChart) concChart.destroy();
+
+  const labels = concView === 'crop'
+    ? ['Paddy','Wheat','Maize','Pulses','Vegetables']
+    : villages;
+
+  const dataPct = concView === 'crop'
+    ? concentration.cropPct
+    : concentration.villagePct;
+
+  const c = ctx('concChart');
+  if (!c) return;
+
+  concChart = new Chart(c, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Share %',
+          data: dataPct,
+          backgroundColor: '#6a4bc3'
+        }
+      ]
+    },
+    options: {
+      ...roundedTooltips,
+      scales: {
+        y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }
+      }
+    },
+    plugins: [valueLabelPlugin]
+  });
+}
+function switchConc(v,btn){
+  if(btn && btn.parentElement){btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); btn.classList.add('active');}
+  concView=v; renderConc();
+}
+
+/* =============== Row 7: Peer Benchmark =============== */
+function buildPeer(){
+  const c = ctx('peerChart'); if(!c) return;
+  new Chart(c,{
+    type:'bar',
+    data:{labels:peers.labels,datasets:[
+      {label:'Avg Loan Size (₹k)',data:peers.avgLoan,backgroundColor:'#1976d2'},
+      {label:'Loan Penetration %',data:peers.penetration.map(r2),backgroundColor:'#43a047',yAxisID:'y1'},
+      {type:'line',label:'On-time Repayment %',data:peers.ontime.map(r2),borderColor:'#c62828',pointBackgroundColor:'#c62828',yAxisID:'y2'}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},
+      scales:{
+        y:{beginAtZero:true,title:{display:true,text:'₹k'}},
+        y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},ticks:{callback:v=>v+' %'},title:{display:true,text:'Penetration %'}},
+        y2:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},ticks:{callback:v=>v+' %'},title:{display:true,text:'On-time %'}}
+      }
+    },
+    plugins:[valueLabelPlugin]
+  });
+}
+
+/* =============== Init =============== */
+function initLoanPage(){
+  renderTray(); renderStrip();
+  switchPen('overall', document.querySelector('[data-v="overall"]'));
+  buildPortfolio(); buildSeason(); renderIns(); buildBuckets(); buildEnduse();
+  renderConc(); buildCohorts(); buildDPD(); buildDue(); buildHeatmap(); buildPeer();
+}
+window.addEventListener('DOMContentLoaded', initLoanPage);
+</script>
+</body>
+</html>
+

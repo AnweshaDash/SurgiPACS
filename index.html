@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PACS Surgi – Snapshot</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+<link rel="stylesheet" href="styles.css"/><!-- was styles.css -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+</head>
+<body class="app-only app-locked">
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" class="login-overlay" aria-modal="true" role="dialog">
+  <div class="login-card">
+    <div class="hd">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="logo" aria-hidden="true" style="background:#fff">
+          <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt="" width="40" height="40" referrerpolicy="no-referrer"/>
+        </div>
+        <div>
+          <div class="ttl" style="color:#145a2a">PACS Surgi — Sign in</div>
+          <div class="meta" style="color:#374151">Durg, Chhattisgarh • Established 1957</div>
+        </div>
+      </div>
+    </div>
+    <form class="login-body" onsubmit="return handleLogin(event)">
+      <div class="login-row">
+        <label for="loginId">Login ID</label>
+        <input id="loginId" class="login-input" type="text" placeholder="Enter Login ID" autocomplete="username" required/>
+      </div>
+      <div class="login-row">
+        <label for="loginPw">Password</label>
+        <input id="loginPw" class="login-input" type="password" placeholder="Enter Password" autocomplete="current-password" required/>
+      </div>
+      <div class="login-actions">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button type="submit" class="btn-solid">Sign in</button>
+          <button type="button" class="btn-ghost" onclick="document.getElementById('loginPw').type = document.getElementById('loginPw').type==='password'?'text':'password'">Show/Hide</button>
+        </div>
+        <div id="loginErr" class="login-error">Invalid credentials</div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-only">
+  <div class="appbar">
+    <div class="row">
+      <a class="logo" href="index.html" aria-label="NABARD">
+        <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt="NABARD logo" width="40" height="40" referrerpolicy="no-referrer"/>
+      </a>
+      <div>
+        <div class="ttl">PACS Surgi – Executive Snapshot & Drill-downs</div>
+        <div class="meta">Durg, Chhattisgarh • Established 1957</div>
+      </div>
+
+      <!-- spacer so icons stay at far right -->
+      <div style="flex:1"></div>
+
+      <!-- Logout icon (keeps your existing logout() logic) -->
+      <div class="icons" style="display:flex;gap:6px;align-items:center">
+        <div class="iconbtn" title="Logout" onclick="logout()">⎋</div>
+      </div>
+    </div>
+
+    <!-- Site navigation -->
+    <nav class="sitenav">
+      <div class="wrapbar">
+        <a class="navlink" href="index.html">🏠 Snapshot</a>
+        <a class="navlink" href="pacs.html">🏛️ PACS</a>
+        <a class="navlink" href="membership.html">👥 Membership</a>
+        <a class="navlink" href="loan.html">💳 Loan</a>
+        <a class="navlink" href="noncredit.html">🛒 Non-credit</a>
+        <a class="navlink" href="reporting.html">📤 Reporting</a>
+        <span class="navspacer">Use these links to switch pages</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- (Removed the separate Logout button block) -->
+
+  <!-- SNAPSHOT (ALL 5 ROWS) -->
+  <section class="wrap" id="snapshot">
+    <!-- Row 1 -->
+    <div class="rowhead dbl" data-page="pacs.html">① PACS profile <span class="chip">Double-click for charts / details</span></div>
+    <div class="cards">
+      <div class="kcard span-3"><div class="ic t">🗺️</div><div class="kv"><div class="label">Villages covered</div><div class="value">8</div></div></div>
+      <div class="kcard span-3"><div class="ic b">🌍</div><div class="kv"><div class="label">Total land holding</div><div class="value">2377 acres</div></div></div>
+      <div class="kcard span-3"><div class="ic a">🏛️</div><div class="kv"><div class="label">Fixed assets </div><div class="value">₹0.0 Cr</div></div></div>
+      <div class="kcard span-3"><div class="ic y">👩</div><div class="kv"><div class="label">Women</div><div class="value" id="ss_women">—</div><div class="mini">~24% of members</div></div></div>
+      <div class="kcard span-3"><div class="ic p">🧑‍🎓</div><div class="kv"><div class="label">Youth (15–35)</div><div class="value" id="ss_youth">—</div><div class="mini">~7% of members</div></div></div>
+      <div class="kcard span-3"><div class="ic g">🌾</div><div class="kv"><div class="label">Avg land / member</div><div class="value">0.82 acres</div></div></div>
+      <div class="kcard span-3"><div class="ic g">🥔</div><div class="kv"><div class="label">Dominant crop - Kharif</div><div class="value">Paddy</div></div></div>
+      <div class="kcard span-3"><div class="ic b">🌾</div><div class="kv"><div class="label">Dominant crop - Rabi</div><div class="value">Wheat</div></div></div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="rowhead dbl" data-page="membership.html">② Members profile <span class="chip">Double-click for charts</span></div>
+    <div class="cards">
+      <div class="kcard span-3"><div class="ic g">👥</div><div class="kv"><div class="label">Total members</div><div class="value" id="ss_total">2,819</div></div></div>
+      <div class="kcard span-3"><div class="ic b">💳</div><div class="kv"><div class="label">Borrowing</div><div class="value" id="ss_bor">1,264</div><div class="mini">Taking loans</div></div></div>
+      <div class="kcard span-3"><div class="ic a">🚫</div><div class="kv"><div class="label">Non-borrowing</div><div class="value" id="ss_nbor">1,555</div><div class="mini">Not taking loans</div></div></div>
+            <div class="kcard span-12">
+        <div class="ic b">📋</div>
+        <div class="kv">
+          <div class="label">Quick actions</div>
+          <div class="toolbar" style="margin-top:2px">
+            <button class="btn btn-outline" onclick="openList('borrowers')">Borrowers vs Non-borrowers – View list</button>
+            <button class="btn btn-outline" onclick="downloadMembersCSV(true)">Download members CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="rowhead dbl" data-page="loan.html">③ Loan profile <span class="chip">Double-click for charts</span></div>
+    <div class="cards">
+      <div class="kcard span-3"><div class="ic g">💰</div><div class="kv"><div class="label">Total outstanding</div><div class="value">₹3 Cr</div><div class="mini">FY 2024–25</div></div></div>
+      <div class="kcard span-3"><div class="ic b">🧾</div><div class="kv"><div class="label">Avg KCC</div><div class="value">45%</div><div class="mini">Coverage across members</div></div></div>
+      <div class="kcard span-3"><div class="ic t">📉</div><div class="kv"><div class="label">Avg NPA</div><div class="value">1.8%</div></div></div>
+      <div class="kcard span-3"><div class="ic a">⛔</div><div class="kv"><div class="label">Members in Days past due </div><div class="value">&gt;30: 5 | &gt;60: 5 | &gt;90: 25</div><div class="mini" style="color:var(--danger)">Focus on &gt;90</div></div></div>
+    </div>
+
+    <!-- Row 4 -->
+    <div class="rowhead dbl" data-page="noncredit.html">④ Non-credit activities <span class="chip">Double-click for details</span></div>
+    <div class="cards">
+      <div class="kcard span-3"><div class="ic g">🧪</div><div class="kv"><div class="label">Fertilisers – sales</div><div class="value">₹1 Cr</div></div></div>
+      <div class="kcard span-3"><div class="ic b">🧴</div><div class="kv"><div class="label">Pesticides – sales</div><div class="value">₹0.05 Cr</div></div></div>
+      <div class="kcard span-3"><div class="ic a">🌱</div><div class="kv"><div class="label">Seeds – sales</div><div class="value">₹0.08 Cr</div></div></div>
+      <div class="kcard span-3"><div class="ic t">🌾</div><div class="kv"><div class="label">Paddy procurement – sales</div><div class="value">not derived</div></div></div>
+      <div class="kcard span-3"><div class="ic b">⭐</div><div class="kv"><div class="label">Diversification readiness score</div><div class="value">not derived</div><div class="mini">How ready is your PACS to initiate a new non-credit business?</div></div></div>
+    </div>
+
+    <!-- Row 5 -->
+    <div class="rowhead dbl" data-page="reporting.html">⑤ Reporting status <span class="chip">Double-click for workflows</span></div>
+    <div class="cards">
+      <div class="kcard span-6"><div class="ic g">✅</div><div class="kv"><div class="label">Balance Sheet (FY 2024-25)</div><div class="value" style="color:#22a06b">Ready</div></div></div>
+      <div class="kcard span-6"><div class="ic a">📤</div><div class="kv"><div class="label">Reports pending to send</div><div class="value" style="color:var(--warn)">5</div></div></div>
+    </div>
+
+    <div class="tiny">Tip: double-click a row title to jump to its detailed page.</div>
+  </section>
+</div>
+
+<!-- JS -->
+<script src="app.js"></script>
+<script src="data.js"></script>
+<script>
+  // unlock (or show overlay) on load
+  ensureAuth();
+
+  // fill snapshot quick stats
+  document.getElementById('ss_women').textContent = (POP*0.35).toLocaleString('en-IN');
+  const youth = document.getElementById('ss_youth');
+  if (youth) youth.textContent = (POP*0.45).toLocaleString('en-IN');
+
+  // double-click a row title -> open the dedicated page
+  document.querySelectorAll('.rowhead.dbl').forEach(el=>{
+    const page = el.getAttribute('data-page');
+    el.style.cursor = 'zoom-in';
+    el.addEventListener('dblclick', ()=>{ if(page) location.href = page; });
+  });
+
+  // quick action stubs used on snapshot buttons
+  function openList(kind){ alert((kind==='borrowers'?'Borrowers vs Non-borrowers':'TD vs Non-TD')+' list (demo).'); }
+  function downloadMembersCSV(memberwise=false){
+    const rows=[['Village','Borrowers','Non-borrowers']];
+    const villages=['Surgi','Bhothli','Gunderdehi','Gopalpur'];
+    const borrowData = { borrowers:[520,480,560,490], nonBorrowers:[120,110,140,110] };
+    villages.forEach((v,i)=>rows.push([v,borrowData.borrowers[i],borrowData.nonBorrowers[i]]));
+    downloadCSV(memberwise?'members_memberwise.csv':'members.csv',rows);
+  }
+
+  /* --- highlight active nav link --- */
+  (function highlightNav(){
+    const here = location.pathname.split('/').pop().toLowerCase() || 'index.html';
+    document.querySelectorAll('.sitenav .navlink').forEach(a=>{
+      const file = a.getAttribute('href')?.toLowerCase() || '';
+      if(here === file) a.classList.add('active');
+    });
+  })();
+</script>
+
+<!-- Page-specific nav styles -->
+<style>
+/* --- SITE NAV --- */
+.sitenav{
+  position:sticky; top:64px; z-index:4; /* sits under the green appbar */
+  background:#ffffffcc; backdrop-filter:saturate(120%) blur(6px);
+  border-bottom:1px solid var(--stroke);
+}
+.sitenav .wrapbar{display:flex; gap:8px; padding:10px 16px; flex-wrap:wrap; align-items:center}
+.navlink{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 12px; border:1px solid var(--stroke); border-radius:999px;
+  background:#fff; color:#145a2a; text-decoration:none; font-weight:800; font-size:13px;
+}
+.navlink:hover{box-shadow:0 4px 12px rgba(23,40,34,.07)}
+.navlink.active{background:var(--brand-100); border-color:#b9e0bf}
+.navspacer{margin-left:auto; color:#335a44; font-size:12px}
+@media (max-width:760px){ .sitenav{top:56px} }
+</style>
+</body>
+</html>

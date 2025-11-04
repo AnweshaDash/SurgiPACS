@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PACS Surgi – PACS Profile</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --brand:#2e7d32; --brand-25:#f5fbf6; --brand-50:#edf7ee; --brand-100:#dff1e2;
+    --text:#0f1f17; --muted:#5b6a62; --stroke:#e6e8eb; --bg:#f6fbf7; --card:#ffffff;
+    --accent:#1976d2; --warn:#ef6c00; --danger:#c62828; --amber:#ffa000; --violet:#6a4bc3;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif}
+  a{color:inherit; text-decoration:none}
+
+  /* App bar */
+  .appbar{position:sticky; top:0; z-index:50; color:#fff;
+    background:linear-gradient(100deg,#184d1c,#2e7d32 60%,#43a047)}
+  .appbar .row{display:flex; align-items:center; gap:12px; padding:12px 16px; flex-wrap:wrap}
+  .logo{height:40px; width:40px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .logo img{width:100%; height:100%; object-fit:contain}
+  .ttl{font-weight:900; letter-spacing:.2px}
+  .meta{opacity:.9; font-size:12px}
+  .grow{flex:1}
+  .nav{display:flex; gap:8px; flex-wrap:wrap}
+  .nav a{background:#ffffff1a; padding:8px 12px; border-radius:999px; border:1px solid #ffffff33; font-weight:700}
+  .nav a.active{background:#fff; color:#145a2a}
+  .icons{display:flex; gap:6px; align-items:center}
+  .iconbtn{position:relative; height:36px; width:36px; border-radius:10px;
+    border:1px solid #ffffff33; background:#ffffff22; display:grid; place-items:center; cursor:pointer}
+  .badge{position:absolute; top:-6px; right:-6px; background:#ffeb3b; color:#145a2a; border-radius:999px; font-size:10px; padding:1px 5px; font-weight:800}
+
+  /* Notification tray */
+  .tray{position:fixed; top:64px; right:16px; width:min(420px,95vw);
+    background:#fff; color:var(--text); border:1px solid var(--stroke);
+    border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.15); display:none; z-index:80}
+  .tray .hd{padding:10px 12px; border-bottom:1px solid var(--stroke); font-weight:800; color:#145a2a; display:flex; justify-content:space-between; align-items:center}
+  .tray .item{padding:10px 12px; border-bottom:1px dashed var(--stroke); display:flex; gap:8px; align-items:flex-start}
+  .tray .item:last-child{border-bottom:none}
+  .tray .tag{font-size:11px; background:var(--brand-100); color:#145a2a; padding:2px 8px; border-radius:999px; border:1px solid var(--stroke)}
+  .tray .close{margin-left:auto; cursor:pointer; color:#9aa8a1}
+
+  /* Layout & cards */
+  .wrap{padding:18px}
+  .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:14px}
+  @media (max-width:1200px){ .grid{grid-template-columns:repeat(8,1fr)} }
+  @media (max-width:900px){ .grid{grid-template-columns:repeat(6,1fr)} }
+  @media (max-width:768px){ .grid{grid-template-columns:repeat(1,1fr)} }
+  .span-12{grid-column:span 12} .span-8{grid-column:span 8} .span-7{grid-column:span 7}
+  .span-6{grid-column:span 6} .span-5{grid-column:span 5} .span-4{grid-column:span 4}
+
+  .card{
+    background:var(--card); border:1px solid var(--stroke); border-radius:16px;
+    box-shadow:0 4px 10px rgba(0,0,0,.05); overflow:hidden; display:flex; flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .card:hover{transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,.07)}
+  .hd{padding:12px 14px; border-bottom:1px solid var(--stroke); color:#145a2a; font-weight:900; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--brand-50)}
+  .sub{font-weight:700; color:#374151; font-size:12px}
+  .bd{padding:12px 14px; position:relative}
+  .chart-wrap{width:100%; height:300px; position:relative}
+  canvas{max-width:100% !important; max-height:100% !important}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .btn{background:var(--brand); color:#fff; border:none; padding:10px 14px; border-radius:11px; font-weight:800; cursor:pointer}
+  .btn-ghost{background:#fff; color:#145a2a; border:1px solid var(--stroke); padding:10px 14px; border-radius:11px; font-weight:800; cursor:pointer}
+  .hint{font-size:12px; color:#5b6a62}
+  .insights{font-size:14px; color:#334155; line-height:1.55}
+  .insights b{color:#145a2a}
+
+  /* Flip tiles */
+  .strip{display:grid; grid-template-columns:repeat(6,1fr); gap:12px}
+  @media (max-width:1020px){ .strip{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:640px){ .strip{grid-template-columns:repeat(2,1fr)} }
+  .tile{perspective:1000px}
+  .flip{position:relative; height:110px; transform-style:preserve-3d; transition:transform .5s}
+  .tile:hover .flip{transform:rotateY(180deg)}
+  .face{position:absolute; inset:0; background:#fff; border:1px solid var(--stroke); border-radius:14px; padding:12px; display:flex; gap:8px; align-items:center; justify-content:space-between; backface-visibility:hidden}
+  .back{transform:rotateY(180deg); background:var(--brand-25)}
+  .kv{display:flex; flex-direction:column}
+  .kv .label{font-size:12px; color:#536267}
+  .kv .value{font-size:22px; font-weight:900; color:#145a2a}
+  .delta{font-size:12px; font-weight:900}
+  .delta.pos{color:#1b5e20} .delta.neg{color:#c62828}
+
+  /* Tables */
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th,td{border-bottom:1px dashed var(--stroke); padding:8px 6px; text-align:left}
+  th{color:#145a2a; font-weight:800; background:var(--brand-50)}
+  tr:hover td{background:var(--brand-25)}
+
+  /* Compact table for BS */
+  .tbl-compact{border:1px solid var(--stroke); border-radius:12px; overflow:hidden; background:#fff}
+  .tbl-compact th,.tbl-compact td{padding:10px 12px; border-bottom:1px solid var(--stroke)}
+  .tbl-compact tbody tr:last-child td{border-bottom:none}
+  .tbl-compact th:first-child,.tbl-compact td:first-child{text-align:left}
+  .tbl-compact th,.tbl-compact td{text-align:right}
+
+  .toast{position:fixed; right:16px; bottom:16px; background:#145a2a; color:#fff; padding:10px 14px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.2); display:none; z-index:95}
+</style>
+</head>
+<body>
+
+<!-- App bar -->
+<div class="appbar">
+  <div class="row">
+    <a class="logo" href="index.html" title="Go to Snapshot">
+      <img src="https://www.nabard.org/auth/writereaddata/ContentImgs/1303194734NABARD-ENG-logo-big.png" alt=""/>
+    </a>
+    <div>
+      <div class="ttl">PACS Surgi — PACS Profile</div>
+      <div class="meta">Durg, Chhattisgarh • Established 1957</div>
+    </div>
+    <div class="grow"></div>
+    <nav class="nav">
+      <a href="index.html">🏠 Snapshot</a>
+      <a href="pacs.html" class="active">🏛️ PACS</a>
+      <a href="membership.html">👥 Membership</a>
+      <a href="loan.html">💳 Loan</a>
+      <a href="noncredit.html">🛒 Non-credit</a>
+      <a href="reporting.html">📤 Reporting</a>
+    </nav>
+    <div class="icons" style="position:relative">
+      <div class="iconbtn" title="Notifications" onclick="toggleTray()">🔔 <span id="bellBadge" class="badge" style="display:none"></span></div>
+      <div class="iconbtn" title="Logout" onclick="logout()">⎋</div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification tray -->
+<div id="tray" class="tray" role="dialog" aria-live="polite">
+  <div class="hd">
+    <span>Notifications</span>
+    <button class="btn-ghost" onclick="clearNotifications()">Clear all</button>
+  </div>
+  <div id="trayItems"></div>
+  <div style="padding:10px 12px; font-size:12px; color:#5b6a62">Tip: tasks here are also visible in <b><a href="reporting.html">Reporting</a></b>.</div>
+</div>
+
+<div class="wrap">
+
+  <!-- High level tiles -->
+  <div class="strip">
+    <div class="tile"><div class="flip">
+      <div class="face"><div class="kv"><div class="label">Year instituted</div><div class="value">1957</div></div></div>
+      <div class="face back"><div class="kv"><div class="label">Years completed</div><div class="value">68</div></div></div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face"><div class="kv"><div class="label">Area of operations</div><div class="value">Durg</div></div><div class="delta">8 villages</div></div>
+      <div class="face back"><div class="kv"><div class="label">Jurisdiction</div><div class="value">Surgi GP & surrounding</div></div></div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face"><div class="kv"><div class="label">Total land (acres)</div><div class="value">2377</div></div><div class="delta" style="color: grey;">Cultivable 2246</div>
+</div>
+      <div class="face back"><div class="kv"><div class="label">Peer avg land</div><div class="value">3083</div></div><div class="delta pos">+29%</div></div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face"><div class="kv"><div class="label">PACS land owned</div><div class="value">no data</div></div><div class="delta">Godown no data</div></div>
+      <div class="face back"><div class="kv"><div class="label">Vacant land</div><div class="value">no data</div></div><div class="delta">Suggest: Milk Chiller</div></div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face"><div class="kv"><div class="label">Revenue FY24</div><div class="value">₹98L </div></div><div class="delta">Profit ₹42L</div></div>
+      <div class="face back"><div class="kv"><div class="label">FY23</div><div class="value">₹69L</div></div><div class="delta pos">+30%</div></div>
+    </div></div>
+
+    <div class="tile"><div class="flip">
+      <div class="face"><div class="kv"><div class="label">Audit rating</div><div class="value">A</div></div><div class="delta">Clean remarks</div></div>
+      <div class="face back"><div class="kv"><div class="label">Peer avg</div><div class="value">A–</div></div><div class="delta pos">Above peer</div></div>
+    </div></div>
+  </div>
+
+  <!-- General overview -->
+  <div class="grid" style="margin-top:14px">
+    <div class="card span-7">
+      <div class="hd">Foundational Information</div>
+      <div class="bd">
+        <table>
+          <tr><th style="width:220px">Field</th><th>Detail</th></tr>
+          <tr><td>Registered name</td><td>PACS Surgi, Durg</td></tr>
+          <tr><td>Year instituted</td><td>1957</td></tr>
+          <tr><td>Jurisdiction</td><td>Arla, Beltikri, Buchi Bharda, Kotrabhatha, Kumhalori, Malpuri, Mudpar, Surgi</td></tr>
+          <tr><td>Bank linkage</td><td>no data</td></tr>
+          <tr><td>Address</td><td>VILLAGE SURGI</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card span-5">
+      <div class="hd">Leadership</div>
+      <div class="bd">
+        <table>
+          <tr><th style="width:170px">Role</th><th>Details</th></tr>
+          <tr><td>CEO / Sachiv</td><td>Mr. Jitendra Kumar Chandrakar • +91 7000040827 • jkchandrakar1987@gmail.com </td></tr>
+          <tr><td>Chairman</td><td>Mr. Jitendra Kumar Chandrakar • +91 7000040827 • jkchandrakar1987@gmail.com </td></tr>
+          <tr><td>Vice-Chairman</td><td>Mr. Dushyant Kumar Patel • +91 8720068499</td></tr>
+          <tr><td>Board Members</td><td>Abhay Kapre Manish Shriwastava Sahu Liladhar</td></tr>
+          <tr><td>Staff strength</td><td>6 (2 CEOs, 1 clerk, 1 computer operator, 2 others)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agricultural overview -->
+  <div class="grid">
+    <div class="card span-12">
+      <div class="hd" style="background-color:#f0f0f0; color:#555; padding:2px 4px; border-radius:4px;">
+        Agricultural Overview <span class="sub">District • Villages • Land • Landowning farmers</span>
+      </div>
+      <div class="bd">
+        <div class="toolbar">
+          <span class="chip">District: <b>Durg</b></span>
+          <span class="chip"># Villages: <b>8</b></span>
+          <button class="btn-ghost" onclick="downloadVillages()">Download CSV</button>
+        </div>
+        <div style="overflow:auto; margin-top:8px">
+          <table id="villTable" style="background-color:#f0f0f0; color:#555; padding:2px 4px; border-radius:4px;">
+            <tr>
+              <th>Village</th><th>Population</th><th>Total land (ac)</th><th style="color: grey;">Cultivable (ac)</th>
+              <th>Landowning farmers</th>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd" style="color: grey;">
+  Land Classification by Village 
+  <span class="sub" style="color: grey;">Cultivable vs Other</span>
+</div>
+<div class="bd">
+
+        <div class="chart-wrap"><canvas id="landChart"></canvas></div>
+        <div class="insights">• Overall cultivable share: <b>2246 / 2377 ac (94%)</b></div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">Farmer Type Split <span class="sub">Operational Holdings — Marginal → Large</span></div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="farmerTypeChart"></canvas></div>
+        <div class="insights">• Majority are <b>Marginal/Small (90%)</b> out of <b>1604</b> landowning farmers (est.).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crops & Allied -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Kharif — Top Crops by Acreage</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="kharifChart"></canvas></div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadCrops('kharif')">Download CSV</button></div>
+      </div>
+    </div>
+    <div class="card span-6">
+      <div class="hd">Rabi — Top Crops by Acreage</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="rabiChart"></canvas></div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadCrops('rabi')">Download CSV</button></div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">Crop Calendar — Harvest Windows (stacked)</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="calendarChart"></canvas></div>
+        <div class="insights">• Paddy harvest peaks <b>Nov–Dec</b>; Wheat/Gram in <b>Mar–Apr</b>; Maize around <b>Sep–Oct</b>.</div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadCalendar()">Download calendar CSV</button></div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">Allied Sectors — # Farmers</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="alliedChart"></canvas></div>
+        <div class="insights">• Dairy is the strongest allied activity; consider credit + input tie-ins.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Infrastructure, Peer, Compliance & Financials -->
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Infrastructure & Assets</div>
+      <div class="bd">
+        <table>
+          <tr><th style="width:220px">Item</th><th>Detail</th></tr>
+          <tr><td>Land owned by PACS</td><td>no details</td></tr>
+          <tr><td>Storage</td><td>1 godown</td></tr>
+          <tr><td>Equipment</td><td>0 tractors</td></tr>
+          <tr><td>IT/Payment</td><td>8 computers</td></tr>
+          <tr><td>Shops/Services</td><td>None</td></tr>
+          <tr><td>Workforce</td><td>6 staff (2 CEOs, 1 clerk, 1 computer operator, 2 others)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">Peer Benchmarking — Key KPIs</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="peerChart"></canvas></div>
+        <div class="insights">• Profit margin <b>43%</b> vs peer avg <b>%</b>. Focus on non-credit income & OPEX control.</div>
+        <div class="toolbar">
+          <button class="btn-ghost" onclick="downloadPeer()">Download peer report</button>
+          <a class="btn" href="membership.html">Coverage & Reach →</a>
+        </div>
+        <div class="hint" style="margin-top:6px">Coverage & Reach (farmer/HH enrollment) is available in <b>Membership</b>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card span-6">
+      <div class="hd">Compliance — Balance Sheet (₹ Cr)</div>
+      <div class="bd">
+        <table class="tbl-compact" aria-label="5-year Balance Sheet (₹ Cr)">
+          <thead>
+            <tr><th style="text-align:left">FY</th><th>Assets</th><th>Liabilities</th><th>Equity</th></tr>
+          </thead>
+          <tbody id="bsTableBody"></tbody>
+        </table>
+        <div class="insights" style="margin-top:8px">• Assets growing steadily; equity improving; A = L + E.</div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadBS()">Download 5-yr Balance Sheet</button></div>
+      </div>
+    </div>
+
+    <div class="card span-6">
+      <div class="hd">Compliance — Income Statement (₹ Cr)</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="isChart"></canvas></div>
+        <div class="insights">• Non-credit income ~<b>43%</b>. Net margin ~<b>%</b> in FY24.</div>
+        <div class="toolbar"><button class="btn-ghost" onclick="downloadIS()">Download 5-yr Income Statement</button></div>
+      </div>
+    </div>
+
+    <div class="card span-12">
+      <div class="hd">Financial Overview — Revenue & Profit (Last 5 Years)</div>
+      <div class="bd">
+        <div class="chart-wrap"><canvas id="revProfChart"></canvas></div>
+        <div class="insights">• Revenue CAGR ≈ <b>%</b> (FY20→FY24). Profit improved with recoveries & input margins.</div>
+      </div>
+    </div>
+
+    <div class="card span-12">
+      <div class="hd">Audit — Rating & Observations</div>
+      <div class="bd">
+        <table>
+          <tr><th style="width:220px">Item</th><th>Detail</th></tr>
+          <tr><td>Audit rating (FY24)</td><td>A (Clean)</td></tr>
+          <tr><td>Key observations</td><td></td></tr>
+          <tr><td>Regulatory filings</td><td>On time</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===== Tray + Logout ===== */
+function toggleTray(){ const t=document.getElementById('tray'); t.style.display=t.style.display==='block'?'none':'block'; }
+function clearNotifications(){ document.getElementById('trayItems').innerHTML=''; document.getElementById('bellBadge').style.display='none'; }
+function logout(){ localStorage.removeItem('pacs_auth'); window.location.href='./index.html'; }
+
+/* ===== Data (consistent with other pages) ===== */
+const villages = ['Surgi','Arla','Kotrabhatha','Buchi Bharda','Kumhalori','Beltikri','Mudpar','Malpuri'];
+const population = [1040,269,384,211,162,212,340,275];
+const totalLand = [722,238,398,224,167,120,269,239];
+const cultivable = [658,235,390,223,156,118,268,198];
+const landowningFarmers = [463,182,274,153,109,90,194,139];
+
+const farmerTypes = ['Marginal(<1 hectare)','Small(1-2 hectare)','Semi-Medium(2-4 hectare)','Medium(4-10 hectare)','Large(>=10 hectare)'];
+const farmerTypeCounts = [1445,123,32,3,1];
+
+const kharif = { labels:['Paddy','Maize','Soybean','Arhar','Groundnut','Others'], acres:[4331,0,0,0,0,0] };
+const rabi   = { labels:['Wheat','Gram','Mustard','Linseed','Vegetables','Others'], acres:[0,0,0,0,0,0] };
+const allied = { labels:['Dairy','Fisheries','Other Allied'], counts:[0,0,0] };
+
+const kpis = ['Profit','ROA %','Recovery rate %'];
+const our  = [42,4,89];
+const peer = [31,12,88];
+
+const years = ['FY23','FY24'];
+const revenueCr = [0.69,0.98];
+const profitCr  = [0.37,0.42];
+
+const creditIncome = [0.11,0.55];
+const nonCreditInc = [0.58,0.42];
+const operatingExp = [0.41,0.37];
+
+const bsAssets = [9.4,10];
+const bsEquity = [4.5,4.9];
+const bsLiabs  = bsAssets.map((a,i)=> +(a - bsEquity[i]).toFixed(2));
+
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const harvest = {
+  Paddy:[0,0,0,0,0,0,0,0,0,1,1,1],
+  Wheat:[0,0,1,1,0,0,0,0,0,0,0,0],
+  Gram: [0,0,1,1,0,0,0,0,0,0,0,0],
+  Maize:[0,0,0,0,0,0,0,1,1,1,0,0]
+};
+
+/* ===== Render tables ===== */
+(function renderVillageTable(){
+  const body = document.getElementById('villTable');
+  villages.forEach((v,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${v}</td>
+      <td>${population[i].toLocaleString('en-IN')}</td>
+      <td>${totalLand[i].toLocaleString('en-IN')}</td>
+      <td>${cultivable[i].toLocaleString('en-IN')}</td>
+      <td>${landowningFarmers[i].toLocaleString('en-IN')}</td>`;
+    body.appendChild(tr);
+  });
+})();
+
+(function renderBSTable(){
+  const tb = document.getElementById('bsTableBody');
+  years.forEach((fy,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td style="text-align:left">${fy}</td>
+      <td>${bsAssets[i].toFixed(2)}</td>
+      <td>${bsLiabs[i].toFixed(2)}</td>
+      <td>${bsEquity[i].toFixed(2)}</td>`;
+    tb.appendChild(tr);
+  });
+})();
+
+/* ===== Chart helpers: safe builder so one miss doesn't break others ===== */
+Chart.defaults.font.family = 'Inter,Arial,system-ui';
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.padding = 10;
+const CHART_OPTS = {plugins:{legend:{position:'top'}},responsive:true,maintainAspectRatio:false};
+
+function makeChart(canvasId, config){
+  const el = document.getElementById(canvasId);
+  if(!el) return;
+  const ctx = el.getContext('2d');
+  try{ new Chart(ctx, config); }catch(e){ console.warn('Chart init failed for', canvasId, e); }
+}
+
+/* ===== Build charts ===== */
+makeChart('landChart', {
+  type:'bar',
+  data:{labels:villages, datasets:[
+    {label:'Cultivable (ac)', data:cultivable, backgroundColor:'#43a047'},
+    {label:'Other (ac)', data: totalLand.map((t,i)=>t - cultivable[i]), backgroundColor:'#c62828'}
+  ]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true, title:{display:true,text:'Acres'}}}}
+});
+
+makeChart('farmerTypeChart', {
+  type:'bar',
+  data:{labels:farmerTypes, datasets:[{label:'# Farmers', data:farmerTypeCounts, backgroundColor:'#1976d2'}]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+makeChart('kharifChart', {
+  type:'bar',
+  data:{labels:kharif.labels, datasets:[{label:'Acres', data:kharif.acres, backgroundColor:'#2e7d32'}]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+makeChart('rabiChart', {
+  type:'bar',
+  data:{labels:rabi.labels, datasets:[{label:'Acres', data:rabi.acres, backgroundColor:'#6a4bc3'}]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+makeChart('calendarChart', {
+  type:'bar',
+  data:{labels:months, datasets:[
+    {label:'Paddy', data:harvest.Paddy, backgroundColor:'#2e7d32', stack:'harv'},
+    {label:'Wheat', data:harvest.Wheat, backgroundColor:'#1976d2', stack:'harv'},
+    {label:'Gram',  data:harvest.Gram,  backgroundColor:'#ffb300', stack:'harv'},
+    {label:'Maize', data:harvest.Maize, backgroundColor:'#6a4bc3', stack:'harv'}
+  ]},
+  options:{...CHART_OPTS, scales:{
+    x:{stacked:true},
+    y:{stacked:true, beginAtZero:true, ticks:{stepSize:1}, suggestedMax:4, title:{display:true,text:'# crops harvesting'}}
+  }}
+});
+
+makeChart('alliedChart', {
+  type:'bar',
+  data:{labels:allied.labels, datasets:[{label:'# Farmers', data:allied.counts, backgroundColor:'#ffb300'}]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+/* --- THE THREE THAT WERE BLANK BEFORE --- */
+makeChart('peerChart', {
+  type:'bar',
+  data:{labels:kpis, datasets:[
+    {label:'PACS Surgi', data:our, backgroundColor:'#2e7d32'},
+    {label:'Peer Avg',  data:peer, backgroundColor:'#9aa8a1'}
+  ]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+makeChart('isChart', {
+  type:'bar',
+  data:{labels:years, datasets:[
+    {label:'Credit income', data:creditIncome, backgroundColor:'#2e7d32'},
+    {label:'Non-credit income', data:nonCreditInc, backgroundColor:'#43a047'},
+    {label:'Operating expenses', data:operatingExp, backgroundColor:'#c62828'}
+  ]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+makeChart('revProfChart', {
+  type:'bar',
+  data:{labels:years, datasets:[
+    {label:'Revenue (₹ Cr)', data:revenueCr, backgroundColor:'#1976d2'},
+    {label:'Profit (₹ Cr)',  data:profitCr,  backgroundColor:'#ffb300'}
+  ]},
+  options:{...CHART_OPTS, scales:{y:{beginAtZero:true}}}
+});
+
+/* ===== CSV downloads ===== */
+function downloadCSV(filename, rows){
+  const processRow = row => row.map(v=>`"${(v??'').toString().replace(/"/g,'""')}"`).join(',');
+  const csv = rows.map(processRow).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function downloadVillages(){
+  const rows = [['Village','Population','Total land (ac)','Cultivable (ac)','Landowning farmers','Panchayat head','Contact']];
+  villages.forEach((v,i)=>rows.push([v,population[i],totalLand[i],cultivable[i],landowningFarmers[i],
+    'Sarpanch: '+(['Sharma','Tandon','Patel','Kashyap','Yadav'][i]),
+    '+91-77'+(1000+i*137)]));
+  downloadCSV('pacs_villages.csv', rows);
+}
+function downloadCrops(season){
+  const obj = season==='kharif'?kharif:rabi;
+  const rows = [['Crop','Acres']]; obj.labels.forEach((l,i)=>rows.push([l,obj.acres[i]]));
+  downloadCSV(`pacs_${season}_crops.csv`, rows);
+}
+function downloadCalendar(){
+  const rows = [['Month','Paddy','Wheat','Gram','Maize']];
+  months.forEach((m,i)=>rows.push([m,harvest.Paddy[i],harvest.Wheat[i],harvest.Gram[i],harvest.Maize[i]]));
+  downloadCSV('pacs_harvest_calendar.csv', rows);
+}
+function downloadPeer(){
+  const rows = [['KPI','PACS Surgi','Peer Avg']]; kpis.forEach((k,i)=>rows.push([k,our[i],peer[i]]));
+  downloadCSV('pacs_peer_kpis.csv', rows);
+}
+function downloadBS(){
+  const rows = [['Year','Assets (Cr)','Liabilities (Cr)','Equity (Cr)']];
+  years.forEach((y,i)=>rows.push([y,bsAssets[i],bsLiabs[i],bsEquity[i]]));
+  downloadCSV('pacs_balance_sheet.csv', rows);
+}
+function downloadIS(){
+  const rows = [['Year','Credit income (Cr)','Non-credit income (Cr)','Operating expenses (Cr)']];
+  years.forEach((y,i)=>rows.push([y,creditIncome[i],nonCreditInc[i],operatingExp[i]]));
+  downloadCSV('pacs_income_statement.csv', rows);
+}
+
+/* ===== Fill village table on load ===== */
+(function renderVillageTableOnce(){
+  const body = document.getElementById('villTable');
+  if(!body || body.dataset.done) return;
+  body.dataset.done = '1';
+})();
+</script>
+</body>
+</html>
